@@ -24,10 +24,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (error == null) {
-      Navigator.pushReplacementNamed(context, '/user'); // 注册成功
+      Navigator.pushReplacementNamed(context, '/user');
     } else {
       setState(() {
-        errorMessage = error; // 显示 Firebase 错误信息
+        errorMessage = error;
       });
     }
   }
@@ -49,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: InputDecoration(labelText: "Password"),
               obscureText: true,
             ),
-            if (errorMessage != null) // 🔥 显示错误信息
+            if (errorMessage != null)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 8.0),
                 child: Text(errorMessage!,style: TextStyle(color: Colors.red, fontSize: 14)),

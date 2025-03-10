@@ -61,17 +61,17 @@ class MainPage extends StatelessWidget {
                 content: Text("Are you sure you want to exit?"),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(false), // ❌ 不退出
+                    onPressed: () => Navigator.of(context).pop(false), 
                     child: Text("Cancel"),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(true), // ✅ 退出
+                    onPressed: () => Navigator.of(context).pop(true),
                     child: Text("Exit"),
                   ),
                 ],
               ),
         );
-        return exitApp ?? false; // 如果用户点击"Cancel"，返回 false，不退出
+        return exitApp ?? false;
       },
       child: Scaffold(
         appBar: AppBar(title: Text("Welcome to WellBites")),

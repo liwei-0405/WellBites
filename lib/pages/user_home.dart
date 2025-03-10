@@ -14,11 +14,11 @@ class UserScreen extends StatelessWidget {
                 content: Text("Are you sure you want to exit?"),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(false), // ❌ 不退出
+                    onPressed: () => Navigator.of(context).pop(false),
                     child: Text("Cancel"),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(true), // ✅ 退出
+                    onPressed: () => Navigator.of(context).pop(true),
                     child: Text("Exit"),
                   ),
                 ],
@@ -29,7 +29,7 @@ class UserScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text("User Page"),
-          automaticallyImplyLeading: false, // ❌ 隐藏 AppBar 返回按钮
+          automaticallyImplyLeading: false,
         ),
         body: Center(
           child: ElevatedButton(

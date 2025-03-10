@@ -18,7 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
       passwordController.text.trim(),
     );
     if (user != null) {
-      Navigator.pushReplacementNamed(context, '/user'); // 登录成功，进入 User Page
+      Navigator.pushReplacementNamed(context, '/user');
     } else {
       ScaffoldMessenger.of(
         context,
