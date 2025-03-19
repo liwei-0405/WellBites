@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'chat_screen.dart';
 
 class UserScreen extends StatelessWidget {
   @override
@@ -39,6 +40,18 @@ class UserScreen extends StatelessWidget {
             },
             child: Text("Logout"),
           ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatScreen(),
+              ), // navigate to chatscreen
+            );
+          },
+          child: Icon(Icons.chat), // Show Chat Icon
+          backgroundColor: Colors.blue,
         ),
       ),
     );
