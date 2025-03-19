@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 
@@ -24,7 +25,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (error == null) {
-      Navigator.pushReplacementNamed(context, '/user');
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'email': user.email,
+          'status': 'unverified',
+          'gender': null,
+          'birthday': null,
+          'height': null,
+          'weight': null,
+          'main_goals': null,
+          'target_weight': null,
+          'goal_date': null,
+          'dietary_restrictions': null,
+          'health_conditions': null,
+        });
+
+        Navigator.pushNamedAndRemoveUntil(context, '/user', (route) => false);
+      }
     } else {
       setState(() {
         errorMessage = error;
@@ -52,12 +70,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (errorMessage != null)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(errorMessage!,style: TextStyle(color: Colors.red, fontSize: 14)),
+                child: Text(
+                  errorMessage!,
+                  style: TextStyle(color: Colors.red, fontSize: 14),
+                ),
               ),
             SizedBox(height: 20),
             ElevatedButton(onPressed: register, child: Text("Register")),
             TextButton(
-              onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
+              onPressed:
+                  () => Navigator.pushReplacementNamed(context, '/login'),
               child: Text("Already have an account? Login"),
             ),
           ],

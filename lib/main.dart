@@ -37,12 +37,12 @@ class AuthCheck extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),// Check did user logged in
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator()); // Waiting for checking
+          return Center(child: CircularProgressIndicator()); // Waiting for checking firebase
         }
-        if (snapshot.hasData) {
-          return UserScreen();
+        if (!snapshot.hasData) {
+          return MainPage();
         }
-        return MainPage();
+        return UserScreen();
       },
     );
   }
