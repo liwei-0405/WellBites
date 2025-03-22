@@ -1,4 +1,6 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../secrets.dart';
 
 class GeminiService {
@@ -7,15 +9,52 @@ class GeminiService {
     apiKey: Secrets.geminiApiKey,
   );
 
-  Future<String> getAIResponse(String userInput) async {
+Future<Map<String, dynamic>?> getUserData() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+
+    DocumentSnapshot userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+    if (userDoc.exists) {
+      return userDoc.data() as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+Future<String> getAIResponse(String userInput) async {
     try {
-      final content = Content.text(userInput);
+      Map<String, dynamic>? userData = await getUserData();
+      if (userData == null) {
+        return "I couldn't retrieve your profile data. Please make sure you're logged in.";
+      }
+
+      String systemPrompt = """
+      You are an intelligent health assistant. The user has the following data:
+      - Weight: ${userData['weight']} kg
+      - Target weight: ${userData['target_weight']} kg
+      - Target date: ${userData['goal_date']}
+      - Main goals: ${userData['main_goals']}
+      - Health conditions: ${userData['health_conditions']}
+      - Dietary restrictions: ${userData['dietary_restrictions']}
+
+      Please answer user questions based on the given data in a natural and helpful way.
+      Do not modify any data. Just provide insights and suggestions.
+      But the way, if you wish user to change their data, or if user ask to change data, you may tell them to modify in their profile page, theres a function to modify.
+      """;
+
+      final content = Content.text("$systemPrompt\nUser Input: $userInput");
       final response = await model.generateContent([content]);
+
       return response.text ?? "AI could not generate a response.";
     } catch (e) {
       return "Error: $e";
     }
   }
+  
 
   Future<bool> isValidGoal(String goal) async {
     if (goal.trim().isEmpty) return false;
