@@ -20,6 +20,12 @@ class _UserScreenState extends State<UserScreen> {
     checkUserStatus();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    checkUserStatus();
+  }
+
   void checkUserStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -29,54 +35,14 @@ class _UserScreenState extends State<UserScreen> {
               .doc(user.uid)
               .get();
       if (userDoc.exists && userDoc['status'] == 'unverified') {
-        isUnverified = true;
-        showUnverifiedDialog();
+        setState(() {
+          isUnverified = true;
+        });
       }
     }
     setState(() {
       isChecking = false;
     });
-  }
-
-  void showUnverifiedDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // disable close dialog
-      builder:
-          (context) => WillPopScope(
-            onWillPop: () async => false,
-            child: AlertDialog(
-              title: Text("Incomplete Details"),
-              content: Text(
-                "You haven't completed your details. Please update your profile.",
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UserDetailsScreen(),
-                      ),
-                    );
-                  },
-                  child: Text("Complete Details"),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    await FirebaseAuth.instance.signOut();
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => MainPage()),
-                      (route) => false,
-                    );
-                  },
-                  child: Text("Logout"),
-                ),
-              ],
-            ),
-          ),
-    );
   }
 
   @override
@@ -112,31 +78,70 @@ class _UserScreenState extends State<UserScreen> {
                   title: Text("User Page"),
                   automaticallyImplyLeading: false,
                 ),
-                body:
-                    isUnverified
-                        ? Center(
-                          child: Text(
-                            "Please complete your details before using the app.",
-                          ),
-                        )
-                        : Center(
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              await FirebaseAuth.instance.signOut();
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MainPage(),
+                body: Center(
+                  child:
+                      isUnverified
+                          ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Please complete your details before using the app.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                (route) => false,
-                              );
-                            },
-                            child: Text("Logout"),
+                              ),
+                              SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => UserDetailsScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text("Complete Details"),
+                              ),
+                              SizedBox(height: 10),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  await FirebaseAuth.instance.signOut();
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => MainPage(),
+                                    ),
+                                    (route) => false,
+                                  );
+                                },
+                                child: Text("Logout"),
+                              ),
+                            ],
+                          )
+                          : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () async {
+                                  await FirebaseAuth.instance.signOut();
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => MainPage(),
+                                    ),
+                                    (route) => false,
+                                  );
+                                },
+                                child: Text("Logout"),
+                              ),
+                            ],
                           ),
-                        ),
+                ),
                 floatingActionButton:
                     isUnverified
-                        ? null // Hide Floating Button (if user havent complete details)
+                        ? null
                         : FloatingActionButton(
                           onPressed: () {
                             Navigator.push(
