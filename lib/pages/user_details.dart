@@ -17,7 +17,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final TextEditingController nicknameController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController heightController = TextEditingController();
   final TextEditingController weightController = TextEditingController();
   final TextEditingController mainGoalsController = TextEditingController();
@@ -45,7 +45,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
 
       if (userDoc.exists) {
         setState(() {
-          nicknameController.text = userDoc['nickname'] ?? "";
+          usernameController.text = userDoc['username'] ?? "";
           selectedGender = userDoc['gender'];
           selectedBirthday =
               userDoc['birthday'] != null
@@ -131,7 +131,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
     if (user != null) {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
         {
-          'nickname': nicknameController.text.trim(),
+          'username': usernameController.text.trim(),
           'gender': selectedGender,
           'birthday':
               selectedBirthday != null
@@ -299,7 +299,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   bool isCurrentPageValid() {
     switch (_currentPage) {
       case 0:
-        return nicknameController.text.trim().isNotEmpty;
+        return usernameController.text.trim().isNotEmpty;
       case 1:
         return selectedGender != null;
       case 2:
@@ -382,10 +382,10 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             physics: NeverScrollableScrollPhysics(),
             children: [
               _buildPageContent(
-                "Enter your Nickname",
+                "Enter your username",
                 TextField(
-                  controller: nicknameController,
-                  decoration: InputDecoration(labelText: "Nickname"),
+                  controller: usernameController,
+                  decoration: InputDecoration(labelText: "username"),
                   onChanged: (value) {
                     setState(() {});
                   },
