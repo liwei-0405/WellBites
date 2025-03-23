@@ -24,7 +24,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       chatMessages.add({
         "bot":
-            "👋 Hello! I'm Gemini, your personal health assistant. Let me check your data... 🔍",
+            "👋 Hello! I'm WellBiter, your personal health assistant. Let me check your data... 🔍",
       });
     });
 
@@ -39,7 +39,7 @@ class _ChatScreenState extends State<ChatScreen> {
       String bmiCategory = _getBMICategory(bmi);
 
       String introMessage = """
-✅ Here is your basic health data:
+✅ ${userData['username']}, this is your basic health data:
 - **Height:** ${userData['height']} cm
 - **Weight:** ${userData['weight']} kg
 - **BMI:** ${bmi.toStringAsFixed(1)} ($bmiCategory)
@@ -104,7 +104,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Gemini AI")),
+      appBar: AppBar(title: Text("WellBiter AI")),
       body: Column(
         children: [
           Expanded(
@@ -116,32 +116,52 @@ class _ChatScreenState extends State<ChatScreen> {
                 String text = chatMessages[index][sender]!;
                 bool isUser = sender == "user";
 
-                return Container(
-                  margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isUser ? Colors.lightBlue[200] : Colors.blue[700],
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(15),
-                      topRight: Radius.circular(15),
-                      bottomLeft:
-                          isUser ? Radius.circular(15) : Radius.circular(0),
-                      bottomRight:
-                          isUser ? Radius.circular(0) : Radius.circular(15),
-                    ),
-                  ),
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: MarkdownBody(
-                    data: text,
-                    styleSheet: MarkdownStyleSheet(
-                      p: TextStyle(
-                        color: isUser ? Colors.blue[900] : Colors.white,
-                        fontSize: 16,
+                return Row(
+                  mainAxisAlignment:
+                      isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                  children: [
+                    if (isUser) SizedBox(width: 40), // **用户消息左侧留空**
+                    Flexible(
+                      child: Container(
+                        margin: EdgeInsets.symmetric(
+                          vertical: 5,
+                          horizontal: 10,
+                        ),
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              isUser ? const Color.fromARGB(255, 9, 60, 154) : const Color.fromARGB(255, 224, 224, 224),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(15),
+                            topRight: Radius.circular(15),
+                            bottomLeft:
+                                isUser
+                                    ? Radius.circular(15)
+                                    : Radius.circular(0),
+                            bottomRight:
+                                isUser
+                                    ? Radius.circular(0)
+                                    : Radius.circular(15),
+                          ),
+                        ),
+                        alignment:
+                            isUser
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                        child: MarkdownBody(
+                          data: text,
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(
+                              color: isUser ? const Color.fromARGB(255, 255, 255, 255) : const Color.fromARGB(255, 0, 0, 0),
+                              fontSize: 16,
+                            ),
+                            strong: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
                       ),
-                      strong: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  ),
+                    if (!isUser) SizedBox(width: 40),
+                  ],
                 );
               },
             ),

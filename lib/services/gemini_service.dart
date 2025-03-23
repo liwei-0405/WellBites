@@ -1,6 +1,7 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../secrets.dart';
 
 class GeminiService {
@@ -27,13 +28,21 @@ Future<Map<String, dynamic>?> getUserData() async {
 
 Future<String> getAIResponse(String userInput) async {
     try {
+      String todayDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
       Map<String, dynamic>? userData = await getUserData();
       if (userData == null) {
         return "I couldn't retrieve your profile data. Please make sure you're logged in.";
       }
 
       String systemPrompt = """
+      Today’s date is **$todayDate**.
+      Please use this information when answering time-sensitive questions.
+      
       You are an intelligent health assistant. The user has the following data:
+      - Name: ${userData['username']}
+      - Birthday: ${userData['birthday']}
+      - Gender: ${userData['gender']}
+      - Height: ${userData['height']} cm
       - Weight: ${userData['weight']} kg
       - Target weight: ${userData['target_weight']} kg
       - Target date: ${userData['goal_date']}
