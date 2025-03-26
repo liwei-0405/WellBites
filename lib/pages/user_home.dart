@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'chat_screen.dart';
 import 'user_details.dart';
 import '../main.dart';
+import 'personal.dart';
 
 class UserScreen extends StatefulWidget {
   @override
@@ -136,6 +137,19 @@ class _UserScreenState extends State<UserScreen> {
                                 },
                                 child: Text("Logout"),
                               ),
+
+                              SizedBox(height: 10),
+
+                              ElevatedButton(
+                                onPressed: () async {
+                                 Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => PersonalPage(),
+                                )
+                              );
+                              },
+                              child: Text("Profile"))
+
                             ],
                           ),
                 ),

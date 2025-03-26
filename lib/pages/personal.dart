@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:main/person/image.dart';
+import 'package:main/pages/image.dart';
 
 class PersonalPage extends StatefulWidget {
   const PersonalPage({super.key});
