@@ -3,11 +3,15 @@ import 'ruler_painter.dart';
 
 class WeightPicker extends StatefulWidget {
   final double initialWeight;
+  final double minWeight;
+  final double maxWeight;
   final ValueChanged<double> onWeightSelected;
 
   const WeightPicker({
     Key? key,
     required this.initialWeight,
+    required this.minWeight,
+    required this.maxWeight,
     required this.onWeightSelected,
   }) : super(key: key);
 
@@ -17,15 +21,13 @@ class WeightPicker extends StatefulWidget {
 
 class _WeightPickerState extends State<WeightPicker> {
   late double selectedWeight;
-  final double minWeight = 30.0;
-  final double maxWeight = 200.0;
   late double rulerOffset;
 
   @override
   void initState() {
     super.initState();
     selectedWeight = widget.initialWeight;
-    rulerOffset = (selectedWeight - minWeight) * 10;
+    rulerOffset = (selectedWeight - widget.minWeight) * 10;
   }
 
   @override
@@ -46,12 +48,12 @@ class _WeightPickerState extends State<WeightPicker> {
           onHorizontalDragUpdate: (details) {
             setState(() {
               rulerOffset -= details.primaryDelta!/3;
-              double newWeight = (minWeight + rulerOffset / 10).clamp(
-                minWeight,
-                maxWeight,
+              double newWeight = (widget.minWeight + rulerOffset / 10).clamp(
+                widget.minWeight,
+                widget.maxWeight,
               );
               selectedWeight = double.parse(newWeight.toStringAsFixed(1));
-              rulerOffset = (selectedWeight - minWeight) * 10;
+              rulerOffset = (selectedWeight - widget.minWeight) * 10;
               widget.onWeightSelected(selectedWeight);
             });
           },
@@ -68,7 +70,7 @@ class _WeightPickerState extends State<WeightPicker> {
           ),
         ),
         
-        Container(width: 2, height: 40, color: const Color.fromARGB(255, 33, 13, 92)),
+        Container(width: 2, height: 20, color: const Color.fromARGB(255, 33, 13, 92)),
       ],
     );
   }

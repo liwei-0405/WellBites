@@ -19,8 +19,6 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   int _currentPage = 0;
 
   final TextEditingController usernameController = TextEditingController();
-  final TextEditingController targetWeightController = TextEditingController();
-  final TextEditingController goalDateController = TextEditingController();
   final TextEditingController dietaryRestrictionsController =
       TextEditingController();
   final TextEditingController healthConditionsController =
@@ -55,15 +53,19 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           selectedMonth = selectedBirthday!.month;
           selectedDay = selectedBirthday!.day;
           selectedMainGoal = userDoc['main_goals'];
-          targetWeightController.text =
-              userDoc['target_weight']?.toString() ?? "";
-          goalDateController.text = userDoc['goal_date'] ?? "";
+          selectedTargetWeight = userDoc['target_weight']?.toDouble();
+          selectedGoalDate =
+              userDoc['goal_date'] != null
+                  ? DateTime.parse(userDoc['goal_date'])
+                  : DateTime.now();
+          selectedGoalYear = selectedGoalDate!.year;
+          selectedGoalMonth = selectedGoalDate!.month;
+          selectedGoalDay = selectedGoalDate!.day;
           dietaryRestrictionsController.text =
               userDoc['dietary_restrictions'] ?? "";
           healthConditionsController.text = userDoc['health_conditions'] ?? "";
           initialweight = userDoc['weight']?.toDouble() ?? null;
           //means last time already checked by ai
-          isTargetWeightValid = targetWeightController.text.isNotEmpty;
           isHealthConditionsValid = healthConditionsController.text.isNotEmpty;
           isDietaryRestrictionsValid =
               dietaryRestrictionsController.text.isNotEmpty;
@@ -74,28 +76,16 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
 
   double selectedHeight = 165;
   double selectedWeight = 45;
+  double? selectedTargetWeight;
   int selectedYear = 2000;
   int selectedMonth = 1;
   int selectedDay = 1;
+  int selectedGoalYear = DateTime.now().year;
+  int selectedGoalMonth = DateTime.now().month;
+  int selectedGoalDay = DateTime.now().day;
   double initialweight = 0;
   String? selectedGender, selectedMainGoal;
   DateTime? selectedBirthday, selectedGoalDate;
-
-  //select goal date
-  Future<void> _selectGoalDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null && picked != selectedGoalDate) {
-      setState(() {
-        goalDateController.text =
-            "${picked.day}-${picked.month}-${picked.year}";
-      });
-    }
-  }
 
   //navigate to next detail
   void nextPage() {
@@ -120,24 +110,28 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   void saveUserDetails() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
-        {
-          'username': usernameController.text.trim(),
-          'gender': selectedGender,
-          'birthday':
-              selectedBirthday != null
-                  ? selectedBirthday!.toIso8601String()
-                  : null,
-          'height': selectedHeight,
-          'weight': selectedWeight,
-          'main_goals': selectedMainGoal,
-          'target_weight': double.tryParse(targetWeightController.text.trim()),
-          'goal_date': goalDateController.text.trim(),
-          'dietary_restrictions': dietaryRestrictionsController.text.trim(),
-          'health_conditions': healthConditionsController.text.trim(),
-          'status': 'verified',
-        },
-      );
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+            'username': usernameController.text.trim(),
+            'gender': selectedGender,
+            'birthday':
+                selectedBirthday != null
+                    ? selectedBirthday!.toIso8601String()
+                    : null,
+            'height': selectedHeight,
+            'weight': selectedWeight,
+            'main_goals': selectedMainGoal,
+            'target_weight': selectedTargetWeight,
+            'goal_date':
+                selectedGoalDate != null
+                    ? selectedGoalDate!.toIso8601String()
+                    : null,
+            'dietary_restrictions': dietaryRestrictionsController.text.trim(),
+            'health_conditions': healthConditionsController.text.trim(),
+            'status': 'verified',
+          });
 
       Navigator.pushReplacement(
         context,
@@ -147,11 +141,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   }
 
   // AI checking parts
-  bool isTargetWeightValid = false;
   bool isHealthConditionsValid = false;
   bool isDietaryRestrictionsValid = false;
-  bool isCheckingAI = false;
-  bool isCheckingTargetWeight = false;
   bool isCheckingHealthConditions = false;
   bool isCheckingDietaryRestrictions = false;
 
@@ -207,40 +198,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
     });
   }
 
-  // check is the weight meet the goals or possible to meet
-  void checkTargetWeight() async {
-    setState(() {
-      isTargetWeightValid = false;
-      isCheckingTargetWeight = true;
-    });
-    _debounce?.cancel();
-    double? currentWeight = selectedWeight;
-    double? targetWeight = double.tryParse(targetWeightController.text.trim());
-    String? goal = selectedMainGoal;
-
-    if (currentWeight == null || targetWeight == null) {
-      setState(() {
-        isTargetWeightValid = false;
-        isCheckingTargetWeight = false;
-      });
-      return;
-    }
-    _debounce = Timer(Duration(seconds: 1), () async {
-      bool result = await _geminiService.isValidTargetWeight(
-        goal!,
-        currentWeight,
-        targetWeight,
-      );
-
-      setState(() {
-        isTargetWeightValid = result;
-        isCheckingTargetWeight = false;
-      });
-    });
-  }
-
   void _checkWeightGoalReached() async {
-    double? targetWeight = double.tryParse(targetWeightController.text.trim());
+    double? targetWeight = selectedTargetWeight;
     bool isGainingWeight = false;
     bool isLosingWeight = false;
     if (targetWeight == null) {
@@ -274,8 +233,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                 onPressed: () {
                   setState(() {
                     selectedMainGoal = null;
-                    targetWeightController.text = "";
-                    isTargetWeightValid = false;
+                    selectedTargetWeight = null;
                   });
                   Navigator.of(context).pop();
                 },
@@ -308,14 +266,13 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       case 3:
         return selectedHeight != null;
       case 4:
-        return selectedHeight != null;
+        return selectedWeight != null;
       case 5:
         return selectedMainGoal != null;
       case 6:
-        return (isTargetWeightValid &&
-            isValidNumber(targetWeightController.text.trim()));
+        return selectedTargetWeight != null;
       case 7:
-        return goalDateController.text.trim().isNotEmpty;
+        return selectedGoalDate != null;
       case 8:
         return isHealthConditionsValid;
       case 9:
@@ -398,27 +355,27 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                 ),
               ),
               _buildPageContent(
-                "What's Your Gender?",
+                "What is Your Gender?",
                 "We'll use this information to personalize your experience and help you reach your goals.",
                 _buildGenderSelectionPage(),
               ),
               _buildPageContent(
                 "Select your Birthday",
                 "We'll use this information to calculate your age.",
-                _buildBirthdayPicker(),
+                _buildDatePicker("Birthday"),
               ),
               _buildPageContent(
-                "Enter your Height (cm)",
+                "What is Your Height? (cm)",
                 "We'll use this information to calculate your BMI.",
                 _buildHeightPicker(),
               ),
               _buildPageContent(
-                "Enter your Weight (kg)",
+                "What is Your Weight? (kg)",
                 "We'll use this information to calculate your BMI.",
-                _buildWeightPicker(),
+                _buildWeightPicker("Weight"),
               ),
               _buildPageContent(
-                "Select Your Goal",
+                "What is Your Goal?",
                 "Choose your main health objective.",
                 Column(
                   children: [
@@ -429,57 +386,14 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                 ),
               ),
               _buildPageContent(
-                "Enter your Target Weight (kg)",
+                "What is Your Target Weight? (kg)",
                 "Setting your target weight corresponds to your goals",
-                Column(
-                  children: [
-                    TextField(
-                      controller: targetWeightController,
-                      decoration: InputDecoration(
-                        labelText: "Target Weight (kg)",
-                      ),
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          isTargetWeightValid = false;
-                        });
-                        checkTargetWeight();
-                      },
-                    ),
-                    if (isCheckingTargetWeight)
-                      Padding(
-                        padding: EdgeInsets.only(top: 10),
-                        child: CircularProgressIndicator(),
-                      ),
-                    if (targetWeightController.text.isNotEmpty &&
-                        !(isValidNumber(targetWeightController.text.trim())))
-                      Text(
-                        "❌ Wrong Format xxx.xx (only numerals)",
-                        style: TextStyle(color: Colors.red, fontSize: 14),
-                      )
-                    else if (targetWeightController.text.isNotEmpty &&
-                        !isTargetWeightValid &&
-                        !isCheckingTargetWeight)
-                      Text(
-                        "❌ Target weight does not match your goal. Please check again.",
-                        style: TextStyle(color: Colors.red, fontSize: 14),
-                      ),
-                  ],
-                ),
+                _buildWeightPicker("TargetWeight"),
               ),
               _buildPageContent(
-                "Enter your Goal Date",
+                "When to Achieve Your Goal?",
                 "Set your target date to reach your goal",
-                ElevatedButton(
-                  onPressed: () => _selectGoalDate(context),
-                  child: Text(
-                    goalDateController.text.isEmpty
-                        ? "Select Goal Date"
-                        : goalDateController.text,
-                  ),
-                ),
+                _buildDatePicker("GoalDate"),
               ),
               _buildPageContent(
                 "Enter your Health Conditions",
@@ -595,8 +509,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           gender: "Male",
           backgroundColor:
               selectedGender == "Male"
-                  ? Color.fromARGB(255, 40, 37, 201)
-                  : Color.fromARGB(255, 203, 202, 248),
+                  ? Color.fromARGB(255, 19, 15, 255)
+                  : Color.fromARGB(255, 185, 184, 247),
           isSelected: selectedGender == "Male",
           icon: Icon(Icons.male, size: buttonSize * 0.5, color: Colors.white),
           onTap: () => setState(() => selectedGender = "Male"),
@@ -607,7 +521,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           backgroundColor:
               selectedGender == "Female"
                   ? Color.fromARGB(255, 138, 25, 183)
-                  : Color.fromARGB(255, 197, 175, 183),
+                  : Color.fromARGB(255, 177, 152, 187),
           isSelected: selectedGender == "Female",
           icon: Icon(Icons.female, size: buttonSize * 0.5, color: Colors.white),
           onTap: () => setState(() => selectedGender = "Female"),
@@ -618,35 +532,69 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
 
   Widget _buildPageContent(String title, String text, Widget field) {
     double screenHeight = MediaQuery.of(context).size.height;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(height: screenHeight * 0.01),
-        Text(
-          title,
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: screenHeight * 0.01),
-        Text(text, textAlign: TextAlign.center, style: TextStyle(fontSize: 10)),
-        field,
-        SizedBox(height: screenHeight * 0.01),
-        ElevatedButton(
-          onPressed: isCurrentPageValid() ? nextPage : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-                isCurrentPageValid() ? Color(0xFF3CA3DD) : Colors.grey,
-            foregroundColor: Colors.white,
+    return Center(
+      child: SingleChildScrollView(
+        child: Align(
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: screenHeight * 0.01),
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 10),
+              ),
+              field,
+              SizedBox(height: screenHeight * 0.01),
+              ElevatedButton(
+                onPressed: isCurrentPageValid() ? nextPage : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isCurrentPageValid() ? Color(0xFF3CA3DD) : Colors.grey,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(_currentPage == 9 ? "Done" : "Continue"),
+              ),
+            ],
           ),
-          child: Text(_currentPage == 9 ? "Done" : "Continue"),
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildBirthdayPicker() {
+  Widget _buildDatePicker(String field) {
     double screenWidth = MediaQuery.of(context).size.width;
     double wheelWidth = screenWidth * 0.20;
     double wheelHeight = 180;
+    DateTime now = DateTime.now();
+    int startYear = (field == "GoalDate") ? now.year : 1900;
+    int endYear = (field == "GoalDate") ? now.year + 50 : now.year;
+
+    int minMonth = 1;
+    int maxMonth = 12;
+    int minDay = 1;
+    int maxDay = 31;
+
+    if (field == "Birthday") {
+      if (selectedYear == now.year) {
+        maxMonth = now.month;
+        if (selectedMonth == now.month) {
+          maxDay = now.day;
+        }
+      }
+    } else if (field == "GoalDate") {
+      if (selectedGoalYear == now.year) {
+        minMonth = now.month;
+        if (selectedGoalMonth == now.month) {
+          minDay = now.day;
+        }
+      }
+    }
     return Container(
       height: 200,
       child: Stack(
@@ -674,17 +622,29 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                   height: wheelHeight,
                   child: ListWheelScrollView.useDelegate(
                     controller: FixedExtentScrollController(
-                      initialItem: selectedDay - 1,
+                      initialItem:
+                          (field == "GoalDate")
+                              ? selectedGoalDay - minDay
+                              : selectedDay - minDay,
                     ),
                     itemExtent: 50,
                     onSelectedItemChanged: (index) {
                       setState(() {
-                        selectedDay = index + 1;
-                        selectedBirthday = DateTime(
-                          selectedYear,
-                          selectedMonth,
-                          selectedDay,
-                        );
+                        if (field == "GoalDate") {
+                          selectedGoalDay = minDay + index;
+                          selectedGoalDate = DateTime(
+                            selectedGoalYear,
+                            selectedGoalMonth,
+                            selectedGoalDay,
+                          );
+                        } else {
+                          selectedDay = minDay + index;
+                          selectedBirthday = DateTime(
+                            selectedYear,
+                            selectedMonth,
+                            selectedDay,
+                          );
+                        }
                       });
                     },
                     perspective: 0.005,
@@ -693,9 +653,23 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                     childDelegate: ListWheelChildBuilderDelegate(
                       builder:
                           (context, index) =>
-                              Center(child: Text("${index + 1}")),
+                              Center(child: Text("${minDay + index}")),
                       childCount:
-                          DateTime(selectedYear, selectedMonth + 1, 0).day,
+                          ((field == "Birthday" &&
+                                  selectedYear == now.year &&
+                                  selectedMonth == now.month)
+                              ? now.day
+                              : DateTime(
+                                (field == "GoalDate")
+                                    ? selectedGoalYear
+                                    : selectedYear,
+                                (field == "GoalDate")
+                                    ? selectedGoalMonth + 1
+                                    : selectedMonth + 1,
+                                0,
+                              ).day) -
+                          minDay +
+                          1,
                     ),
                   ),
                 ),
@@ -707,17 +681,52 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                   height: wheelHeight,
                   child: ListWheelScrollView.useDelegate(
                     controller: FixedExtentScrollController(
-                      initialItem: selectedMonth - 1,
+                      initialItem:
+                          (field == "GoalDate")
+                              ? selectedGoalMonth - minMonth
+                              : selectedMonth - minMonth,
                     ),
                     itemExtent: 50,
                     onSelectedItemChanged: (index) {
                       setState(() {
-                        selectedMonth = index + 1;
-                        selectedBirthday = DateTime(
-                          selectedYear,
-                          selectedMonth,
-                          selectedDay,
-                        );
+                        if (field == "GoalDate") {
+                          selectedGoalMonth = minMonth + index;
+                          int newMaxDay =
+                              DateTime(
+                                selectedGoalYear,
+                                selectedGoalMonth + 1,
+                                0,
+                              ).day;
+                          if (selectedGoalDay > newMaxDay) {
+                            selectedGoalDay = newMaxDay;
+                          }
+                          selectedGoalDate = DateTime(
+                            selectedGoalYear,
+                            selectedGoalMonth,
+                            selectedGoalDay,
+                          );
+                        } else {
+                          selectedMonth = minMonth + index;
+                          int newMaxDay =
+                              (selectedYear == now.year &&
+                                      selectedMonth == now.month)
+                                  ? now.day
+                                  : DateTime(
+                                    selectedYear,
+                                    selectedMonth + 1,
+                                    0,
+                                  ).day;
+
+                          if (selectedDay > newMaxDay) {
+                            selectedDay = newMaxDay;
+                          }
+
+                          selectedBirthday = DateTime(
+                            selectedYear,
+                            selectedMonth,
+                            selectedDay,
+                          );
+                        }
                       });
                     },
                     physics: FixedExtentScrollPhysics(),
@@ -737,9 +746,11 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                           "Nov",
                           "Dec",
                         ];
-                        return Center(child: Text(months[index]));
+                        return Center(
+                          child: Text(months[minMonth - 1 + index]),
+                        );
                       },
-                      childCount: 12,
+                      childCount: maxMonth - minMonth + 1,
                     ),
                   ),
                 ),
@@ -751,25 +762,53 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                   height: wheelHeight,
                   child: ListWheelScrollView.useDelegate(
                     controller: FixedExtentScrollController(
-                      initialItem: selectedYear - 1900,
+                      initialItem:
+                          (field == "GoalDate")
+                              ? selectedGoalYear - startYear
+                              : selectedYear - startYear,
                     ),
                     itemExtent: 50,
                     onSelectedItemChanged: (index) {
                       setState(() {
-                        selectedYear = 1900 + index;
-                        selectedBirthday = DateTime(
-                          selectedYear,
-                          selectedMonth,
-                          selectedDay,
-                        );
+                        if (field == "GoalDate") {
+                          selectedGoalYear = startYear + index;
+                          selectedGoalDate = DateTime(
+                            selectedGoalYear,
+                            selectedGoalMonth,
+                            selectedGoalDay,
+                          );
+                        } else {
+                          selectedYear = startYear + index;
+                          maxMonth =
+                              (selectedYear == now.year) ? now.month : 12;
+                          maxDay =
+                              (selectedYear == now.year &&
+                                      selectedMonth == now.month)
+                                  ? now.day
+                                  : DateTime(
+                                    selectedYear,
+                                    selectedMonth + 1,
+                                    0,
+                                  ).day;
+
+                          if (selectedMonth > maxMonth)
+                            selectedMonth = maxMonth;
+                          if (selectedDay > maxDay) selectedDay = maxDay;
+
+                          selectedBirthday = DateTime(
+                            selectedYear,
+                            selectedMonth,
+                            selectedDay,
+                          );
+                        }
                       });
                     },
                     physics: FixedExtentScrollPhysics(),
                     childDelegate: ListWheelChildBuilderDelegate(
                       builder:
                           (context, index) =>
-                              Center(child: Text("${1900 + index}")),
-                      childCount: DateTime.now().year - 1900 + 1,
+                              Center(child: Text("${startYear + index}")),
+                      childCount: (endYear - startYear) + 1,
                     ),
                   ),
                 ),
@@ -803,25 +842,63 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
     );
   }
 
-  Widget _buildWeightPicker() {
-    double userWeight = selectedWeight;
+  Widget _buildWeightPicker(String field) {
+    double initial_Weight = selectedWeight;
+    double minWeight = 30;
+    double maxWeight = 200;
+    double heightInMeters = selectedHeight / 100;
+    double BMIminWeight = 18.5 * (heightInMeters * heightInMeters);
+    double BMImaxWeight = 24.9 * (heightInMeters * heightInMeters);
 
-    return Container(
-      height: 300,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          WeightPicker(
-            initialWeight: userWeight,
-            onWeightSelected: (weight) {
-              setState(() {
-                userWeight = weight;
-                selectedWeight = weight;
-              });
-            },
+    if (field != "Weight") {
+      if (selectedMainGoal == "Weight Gain") {
+        minWeight = selectedWeight + 0.1;
+        initial_Weight = minWeight;
+      } else if (selectedMainGoal == "Weight Loss") {
+        maxWeight = selectedWeight - 0.1;
+        initial_Weight = maxWeight;
+      } else if (selectedMainGoal == "Improved Health") {
+        minWeight = BMIminWeight;
+        maxWeight = BMImaxWeight;
+        minWeight = minWeight.clamp(30, 200);
+        maxWeight = maxWeight.clamp(30, 200);
+      }
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 150,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              WeightPicker(
+                initialWeight: initial_Weight,
+                minWeight: minWeight,
+                maxWeight: maxWeight,
+                onWeightSelected: (weight) {
+                  setState(() {
+                    initial_Weight = weight;
+                    if (field == "Weight") {
+                      selectedWeight = weight;
+                    } else if (field == "TargetWeight") {
+                      selectedTargetWeight = weight;
+                    }
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        if (field == "TargetWeight") ...[
+          SizedBox(height: 8),
+          Text(
+            "Suggested range of weight based on BMI: ${BMIminWeight.toStringAsFixed(1)} - ${BMImaxWeight.toStringAsFixed(1)} kg",
+            style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -832,8 +909,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       onTap: () {
         setState(() {
           selectedMainGoal = goal;
-          targetWeightController.clear();
-          isTargetWeightValid = false;
+          selectedTargetWeight = null;
         });
       },
       child: Container(
