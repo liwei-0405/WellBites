@@ -6,12 +6,11 @@ import 'firebase_options.dart';
 import 'pages/login.dart';
 import 'pages/register.dart';
 import 'pages/user_home.dart';
+import 'widgets/custom_dialog.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-  options: DefaultFirebaseOptions.currentPlatform,
-);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(MyApp());
@@ -22,7 +21,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AuthCheck(),  // Check Authentication
+      home: AuthCheck(), // Check Authentication
       routes: {
         '/login': (context) => LoginScreen(),
         '/register': (context) => RegisterScreen(),
@@ -37,10 +36,13 @@ class AuthCheck extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),// Check did user logged in
+      stream:
+          FirebaseAuth.instance.authStateChanges(), // Check did user logged in
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator()); // Waiting for checking firebase
+          return Center(
+            child: CircularProgressIndicator(),
+          ); // Waiting for checking firebase
         }
         if (!snapshot.hasData) {
           return MainPage();
@@ -57,25 +59,18 @@ class MainPage extends StatelessWidget {
     final Size screenSize = MediaQuery.of(context).size;
     final double screenWidth = screenSize.width;
     final double screenHeight = screenSize.height;
-    
+
     return WillPopScope(
       onWillPop: () async {
         bool exitApp = await showDialog(
           context: context,
           builder:
-              (context) => AlertDialog(
-                title: Text("Exit App"),
-                content: Text("Are you sure you want to exit?"),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false), 
-                    child: Text("Cancel"),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: Text("Exit"),
-                  ),
-                ],
+              (context) => ConfirmationDialog(
+                message: "Are you sure you want to exit?",
+                confirmText: "Exit",
+                cancelText: "Cancel",
+                onConfirm: () => Navigator.of(context).pop(true),
+                onCancel: () => Navigator.of(context).pop(false),
               ),
         );
         return exitApp ?? false;
@@ -108,8 +103,8 @@ class MainPage extends StatelessWidget {
                   Container(
                     width: screenWidth * 0.8,
                     height: screenHeight * 0.3,
-                    child: Image.network(
-                      'https://cdn.builder.io/api/v1/image/assets/TEMP/3fb33b280467976fa60bc68e973599bc17c3d70f',
+                    child: Image.asset(
+                      'assets/icons/adaptive_icon_foreground.png',
                       fit: BoxFit.contain,
                     ),
                   ),
