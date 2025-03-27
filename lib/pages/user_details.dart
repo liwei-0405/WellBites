@@ -274,9 +274,9 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       case 7:
         return selectedGoalDate != null;
       case 8:
-        return isHealthConditionsValid;
+        return isHealthConditionsValid && healthConditionsController.text != "";
       case 9:
-        return isDietaryRestrictionsValid;
+        return isDietaryRestrictionsValid && dietaryRestrictionsController.text != "";
       default:
         return false;
     }
@@ -396,8 +396,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                 _buildDatePicker("GoalDate"),
               ),
               _buildPageContent(
-                "Enter your Health Conditions",
-                "We will personalize our recipes to suit your health conditions.",
+                "Your Health Conditions?",
+                "Will be use to personalize our recipes to suit your health conditions.",
                 Column(
                   children: [
                     TextField(
@@ -434,7 +434,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                         padding: EdgeInsets.only(top: 10),
                         child: CircularProgressIndicator(),
                       ),
-                    if (!isHealthConditionsValid && !isCheckingHealthConditions)
+                    if (!isHealthConditionsValid && !isCheckingHealthConditions && healthConditionsController.text != "")
                       Text(
                         "❌ Please enter valid health conditions.",
                         style: TextStyle(color: Colors.red, fontSize: 14),
@@ -443,8 +443,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                 ),
               ),
               _buildPageContent(
-                "Enter your Dietary Restrictions",
-                "We will personalize our recipes to suit your health conditions.",
+                "Any Dietary Restrictions?",
+                "Will be use to personalize our recipes to suit your health conditions.",
                 Column(
                   children: [
                     TextField(
@@ -483,7 +483,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                         child: CircularProgressIndicator(),
                       ),
                     if (!isDietaryRestrictionsValid &&
-                        !isCheckingDietaryRestrictions)
+                        !isCheckingDietaryRestrictions &&
+                        dietaryRestrictionsController.text != "")
                       Text(
                         "❌ Please enter valid dietary restrictions.",
                         style: TextStyle(color: Colors.red, fontSize: 14),
