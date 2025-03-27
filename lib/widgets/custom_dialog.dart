@@ -24,7 +24,7 @@ class ConfirmationDialog extends StatelessWidget {
     return Center(
       child: Container(
         width: screenWidth * 0.8,
-        height: screenHeight * 0.25,
+        height: screenHeight * 0.4,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
@@ -58,7 +58,7 @@ class ConfirmationDialog extends StatelessWidget {
                   decoration: TextDecoration.none,
                 ),
               ),
-              SizedBox(height: 20),
+              SizedBox(height: screenHeight*0.03),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
