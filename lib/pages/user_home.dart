@@ -7,6 +7,7 @@ import '../main.dart';
 import 'personal.dart';
 import 'about.dart';
 import '../widgets/custom_dialog.dart';
+import 'recipes_page.dart';
 
 class UserScreen extends StatefulWidget {
   @override
@@ -136,6 +137,22 @@ class _UserScreenState extends State<UserScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => PersonalPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        ListTile(
+                          leading: Icon(Icons.food_bank),
+                          title: Text(
+                            'Recipes',
+                            style: TextStyle(fontFamily: 'Actor'),
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RecipesPage(),
                               ),
                             );
                           },

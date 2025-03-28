@@ -66,7 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'dietary_restrictions': null,
           'health_conditions': null,
         });
-
+    
         Navigator.pushNamedAndRemoveUntil(context, '/user', (route) => false);
       }
     } else {
