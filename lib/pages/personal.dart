@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'image.dart';
+import 'privacy.dart';
 
 class PersonalPage extends StatefulWidget {
   const PersonalPage({super.key});
@@ -80,7 +81,9 @@ class _PersonalPageState extends State<PersonalPage> {
                 backgroundImage:
                     _imageUrl.isNotEmpty
                         ? NetworkImage(_imageUrl)
-                        : const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'),
+                        : const NetworkImage(
+                          'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                        ),
               ),
               Positioned(
                 bottom: -10,
@@ -106,7 +109,12 @@ class _PersonalPageState extends State<PersonalPage> {
           ProfileWidget(
             title: 'Privacy Policy',
             icon: Icons.privacy_tip_outlined,
-            onPress: () {},
+            onPress: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => PrivacyPolicyPage()),
+              );
+            },
           ),
           ProfileWidget(
             title: 'Settings',
