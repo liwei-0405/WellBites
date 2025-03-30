@@ -161,7 +161,8 @@ class GeminiService {
       The recipes generated should also take into account the following USER information:
       health conditions:  ${userData?['health_conditions']},
       dietary restrictions:  ${userData?['dietary_restrictions']},
-      extra restrictions: ${extra !=""? extra: "no extra restrctions"}
+      preference: ${extra !=""? extra: "no extra preference"}
+      if preference is a food name like "cheese", generate the recipes that have more cheese, if preference is "no cheese" don't generate recipes that have cheese inside.
       IMPORTANT: Avoid generating recipes that have already been generated before: 
       ${existingRecipeNames.isNotEmpty ? existingRecipeNames.join(", ") : "No previous recipes"}.
       Structure the output as a single JSON object with three top-level keys: "Breakfast", "Lunch", and "Dinner".
@@ -169,7 +170,7 @@ class GeminiService {
       Each recipe object within the arrays must have the following keys exactly:
       - "name": A string for the recipe's name.
       - "ingredient": A JSON array of strings, listing the ingredients.
-      - "ingredient_amount": A JSON array of strings, listing the corresponding amount/quantity for each ingredient. The order MUST match the "ingredient" array.
+      - "ingredient_amount": A JSON array of strings, listing the corresponding (amount/quantity/gram(g) or milliliters(ml)) for each ingredient. The order MUST match the "ingredient" array.
       - "guide": A JSON array of strings, where each string is a step in the cooking instructions.
 
       Ensure the output is ONLY the valid JSON object requested, with no surrounding text or markdown formatting like ```json ```.
@@ -179,7 +180,7 @@ class GeminiService {
         {
           "name": "Scrambled Eggs",
           "ingredient": ["Eggs", "Milk", "Butter", "Salt", "Pepper"],
-          "ingredient_amount": ["2 large", "1 tbsp", "1 tsp", "pinch", "pinch"],
+          "ingredient_amount": ["2 large", "100ml", "20g", "4g", "5g"],
           "guide": [
             "Whisk eggs and milk.",
             "Melt butter in skillet.",
