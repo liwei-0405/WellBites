@@ -16,15 +16,15 @@ Future<Uint8List?> pickImage(ImageSource source) async {
 Future<String?> uploadImageToCloudinary(Uint8List imageBytes) async {
   try {
     String cloudName =
-        "dhonymxt5"; // 🔹 Replace with your Cloudinary cloud name
-    String uploadPreset = "g4dunglr"; // 🔹 Replace with your Upload Preset
+        "dhonymxt5"; // 
+    String uploadPreset = "g4dunglr"; 
 
     var request = http.MultipartRequest(
       'POST',
       Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload"),
     );
 
-    // 🔹 Correct way to attach image file
+    // attach image file
     request.fields['upload_preset'] = uploadPreset;
     request.files.add(
       http.MultipartFile.fromBytes('file', imageBytes, filename: "image.jpg"),

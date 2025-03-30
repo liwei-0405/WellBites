@@ -15,6 +15,8 @@ class PersonalPage extends StatefulWidget {
 
 class _PersonalPageState extends State<PersonalPage> {
   String _imageUrl = "";
+  String _userName = "";
+  String _userEmail = "";
 
   void selectImage() async {
     Uint8List? img = await pickImage(ImageSource.gallery);
@@ -57,72 +59,168 @@ class _PersonalPageState extends State<PersonalPage> {
   void initState() {
     super.initState();
     getImageFromFirestore();
+    getUserData();
+  }
+
+void getUserData() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      DocumentSnapshot snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
+      if (snapshot.exists) {
+        print("Firestore Data: ${snapshot.data()}"); // Debugging Step
+
+        setState(() {
+          _userName = snapshot.get('username') ?? "No Name"; // Default if null
+          _userEmail = snapshot.get('email') ?? "No Email"; // Default if null
+          _imageUrl = snapshot.get('profileImage') ?? "";
+        });
+
+        print("User Name: $_userName");
+        print("User Email: $_userEmail");
+      } else {
+        print("No user data found in Firestore.");
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     var isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Profile Page'),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundImage:
-                    _imageUrl.isNotEmpty
-                        ? NetworkImage(_imageUrl)
-                        : const NetworkImage(
-                          'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
-                        ),
-              ),
-              Positioned(
-                bottom: -10,
-                left: 60,
-                child: IconButton(
-                  onPressed: selectImage,
-                  icon: const Icon(Icons.add_a_photo_outlined),
+
+    return Stack(
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: double.infinity,
+              height: 350,
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/icons/profile_icon_background.png'),
+                  fit: BoxFit.cover, // Ensures it covers the whole width
                 ),
+              ),
+            ),
+          ],
+        ),
+        Scaffold(
+          backgroundColor:
+              Colors.transparent, // Makes it blend with the background
+          appBar: AppBar(
+            backgroundColor: Colors.transparent, // Transparent App Bar
+            elevation: 0, // Removes shadow for a clean look
+            actions: [
+              IconButton(
+                onPressed: () {},
+                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
               ),
             ],
           ),
-          const Divider(),
-          ProfileWidget(
-            title: 'Profile',
-            icon: Icons.account_box_outlined,
-            onPress: () {},
+
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 180),
+
+                  Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Profile Picture
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 45,
+                              backgroundImage:
+                                  _imageUrl.isNotEmpty
+                                      ? NetworkImage(_imageUrl)
+                                      : const NetworkImage(
+                                        'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                                      ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: -10,
+                              child: IconButton(
+                                onPressed: selectImage,
+                                icon: const Icon(Icons.add_a_photo_outlined),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(
+                          width: 30,
+                        ), // Space between image and text
+                        // User Info (Name & Email)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _userName.isNotEmpty ? _userName : "Loading...",
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              _userEmail.isNotEmpty ? _userEmail : "Loading...",
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                ProfileWidget(
+                  title: 'Profile',
+                  icon: Icons.account_box_outlined,
+                  onPress: () {},
+                ),
+                ProfileWidget(
+                  title: 'Favourite',
+                  icon: Icons.star_border,
+                  onPress: () {},
+                ),
+                ProfileWidget(
+                  title: 'Privacy Policy',
+                  icon: Icons.privacy_tip_outlined,
+                  onPress: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PrivacyPolicyPage(),
+                      ),
+                    );
+                  },
+                ),
+                ProfileWidget(
+                  title: 'Settings',
+                  icon: Icons.settings,
+                  onPress: () {},
+                ),
+              ],
+            ),
           ),
-          ProfileWidget(
-            title: 'Favourite',
-            icon: Icons.star_border,
-            onPress: () {},
-          ),
-          ProfileWidget(
-            title: 'Privacy Policy',
-            icon: Icons.privacy_tip_outlined,
-            onPress: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => PrivacyPolicyPage()),
-              );
-            },
-          ),
-          ProfileWidget(
-            title: 'Settings',
-            icon: Icons.settings,
-            onPress: () {},
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

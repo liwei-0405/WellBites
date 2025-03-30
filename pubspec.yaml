@@ -9,6 +9,7 @@ flutter_icons:
   image_path: "assets/icons/app_icon.png"  # 传统静态图标（备用）
   adaptive_icon_foreground: "assets/icons/adaptive_icon_foreground.png"
   adaptive_icon_background: "assets/icons/adaptive_icon_background.png"
+  profile_background: "assets/icons/profile_icon_background.png"
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
 # followed by an optional build number separated by a +.
@@ -79,6 +80,7 @@ flutter:
     - assets/icons/adaptive_icon_background.png
     - assets/icons/adaptive_icon_foreground.png
     - assets/icons/app_icon.png
+    - assets/icons/profile_icon_background.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
