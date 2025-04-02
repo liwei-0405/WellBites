@@ -98,144 +98,117 @@ class _PersonalPageState extends State<PersonalPage> {
     double screenHeight = MediaQuery.of(context).size.height;
 
     var isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
-
+    final Color scaffoldBackgroundColor = Theme.of(context).scaffoldBackgroundColor;
     return Stack(
       children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: double.infinity,
-              height: screenHeight * 0.4,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/icons/profile_icon_background.png'),
-                  fit: BoxFit.cover, // Ensures it covers the whole width
-                ),
-              ),
-            ),
-          ],
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: scaffoldBackgroundColor, // Use the theme's background color
         ),
 
+        Container(
+          width: double.infinity,
+          height: screenHeight * 0.4, // Covers top 40%
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              // Ensure this asset exists in your pubspec.yaml and project
+              image: AssetImage('assets/icons/profile_icon_background.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
         Scaffold(
-          backgroundColor:
-              Colors.transparent, // Makes it blend with the background
+          backgroundColor: Colors.transparent, // Keep Scaffold transparent
           appBar: AppBar(
-            backgroundColor: Colors.transparent, // Transparent App Bar
-            elevation: 0, // Removes shadow for a clean look
+            backgroundColor: Colors.transparent, // Keep AppBar transparent
+            elevation: 0,
             actions: [
               IconButton(
-                onPressed: () {},
-                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                onPressed: () { /* Theme toggle logic */ },
+                icon: Icon(isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined),
               ),
             ],
           ),
-
           body: SingleChildScrollView(
             child: Column(
               children: [
-                SizedBox(height: screenHeight * 0.2),
+                // Adjust this spacing to position content correctly below AppBar/Status bar
+                // Needs to account for the AppBar height + desired space from image top
+                SizedBox(height: screenHeight * 0.15), // Tune this value
 
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Profile Picture
-                        Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: screenWidth * 0.12,
-                              backgroundImage:
-                                  _imageUrl.isNotEmpty
-                                      ? NetworkImage(_imageUrl)
-                                      : const NetworkImage(
-                                        'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
-                                      ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: -10,
+                // --- Profile Header Section ---
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Profile Picture
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          CircleAvatar(
+                            radius: screenWidth * 0.12,
+                            backgroundColor: Colors.grey.shade300,
+                            backgroundImage: _imageUrl.isNotEmpty
+                                ? NetworkImage(_imageUrl)
+                                : const NetworkImage(
+                                    'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                                  ) as ImageProvider,
+                          ),
+                          Positioned(
+                            bottom: -5, right: -15,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor, // Or scaffoldBackgroundColor
+                                shape: BoxShape.circle,
+                                border: Border.all(color: scaffoldBackgroundColor, width: 2)
+                              ),
                               child: IconButton(
                                 onPressed: selectImage,
-                                icon: const Icon(Icons.add_a_photo_outlined),
+                                icon: Icon(Icons.add_a_photo_outlined, size: screenWidth * 0.05),
+                                padding: EdgeInsets.zero, constraints: BoxConstraints(),
                               ),
                             ),
-                          ],
-                        ),
-
-                        SizedBox(
-                          width: screenWidth * 0.08,
-                        ), // Space between image and text
-                        // User Info (Name & Email)
-                        Column(
+                          ),
+                        ],
+                      ),
+                      SizedBox(width: screenWidth * 0.05),
+                      // User Info
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               _userName.isNotEmpty ? _userName : "Loading...",
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.05,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: TextStyle(fontSize: screenWidth * 0.05, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
                             ),
+                            SizedBox(height: 4),
                             Text(
                               _userEmail.isNotEmpty ? _userEmail : "Loading...",
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.04,
-                                color: Colors.grey,
-                              ),
+                              style: TextStyle(fontSize: screenWidth * 0.04, color: Colors.grey),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
 
-                SizedBox(height: screenHeight * 0.01),
+                SizedBox(height: screenHeight * 0.03),
 
-                ProfileWidget(
-                  title: 'Profile',
-                  icon: Icons.account_box_outlined,
-                  onPress: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UserDetailsScreen(cameFromProfile: true),
-                      ),
-                    );
-                  },
-                ),
+                // --- Menu Items ---
+                ProfileWidget(title: 'Profile', icon: Icons.account_box_outlined, onPress: () => Navigator.push(context, MaterialPageRoute(builder: (context) => UserDetailsScreen(cameFromProfile: true)))),
+                ProfileWidget(title: 'Favourite', icon: Icons.star_border, onPress: () {}),
+                ProfileWidget(title: 'Privacy Policy', icon: Icons.privacy_tip_outlined, onPress: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PrivacyPolicyPage()))),
+                ProfileWidget(title: 'Settings', icon: Icons.settings_outlined, onPress: () {}),
 
-                ProfileWidget(
-                  title: 'Favourite',
-                  icon: Icons.star_border,
-                  onPress: () {},
-                ),
-
-                ProfileWidget(
-                  title: 'Privacy Policy',
-                  icon: Icons.privacy_tip_outlined,
-                  onPress: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PrivacyPolicyPage(),
-                      ),
-                    );
-                  },
-                ),
-                ProfileWidget(
-                  title: 'Settings',
-                  icon: Icons.settings,
-                  onPress: () {},
-                ),
-                
                 SizedBox(height: screenHeight * 0.02),
-
+                // --- Rating Widget ---
                 RatingWidget(),
+                SizedBox(height: screenHeight * 0.02), // Bottom padding
               ],
             ),
           ),
@@ -353,10 +326,10 @@ class _RatingWidgetState extends State<RatingWidget> {
         ElevatedButton(
           onPressed: () {
             if (_showSlider) {
-              _saveRating(); // Submit rating when clicked again
+              _saveRating();
             } else {
               setState(() {
-                _showSlider = true; // Show slider
+                _showSlider = true;
               });
             }
           },
