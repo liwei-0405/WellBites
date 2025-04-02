@@ -203,7 +203,7 @@ class _PersonalPageState extends State<PersonalPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => UserDetailsScreen(),
+                        builder: (context) => UserDetailsScreen(cameFromProfile: true),
                       ),
                     );
                   },

@@ -8,8 +8,13 @@ import '../widgets/gender_option.dart';
 import '../services/gemini_service.dart';
 import 'dart:async';
 import 'user_home.dart';
+import 'personal.dart';
 
 class UserDetailsScreen extends StatefulWidget {
+  final bool cameFromProfile;
+
+  const UserDetailsScreen({super.key, this.cameFromProfile = false});
+  
   @override
   _UserDetailsScreenState createState() => _UserDetailsScreenState();
 }
@@ -23,6 +28,10 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       TextEditingController();
   final TextEditingController healthConditionsController =
       TextEditingController();
+
+  String? userStatus; // To store the status from Firestore
+  bool _isLoading = true;
+
   // get firestore user's details , if insert before
   @override
   void initState() {
@@ -31,6 +40,12 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   }
 
   void loadUserData() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       DocumentSnapshot userDoc =
@@ -39,7 +54,9 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               .doc(user.uid)
               .get();
 
-      if (userDoc.exists) {
+      if (userDoc.exists && mounted) {
+        // --- ADD mounted check ---
+        final data = userDoc.data() as Map<String, dynamic>?;
         setState(() {
           usernameController.text = userDoc['username'] ?? "";
           selectedGender = userDoc['gender'];
@@ -66,11 +83,26 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           healthConditionsController.text = userDoc['health_conditions'] ?? "";
           initialweight = userDoc['weight']?.toDouble() ?? null;
           //means last time already checked by ai
+
+          userStatus = data?['status'];
+
           isHealthConditionsValid = healthConditionsController.text.isNotEmpty;
           isDietaryRestrictionsValid =
               dietaryRestrictionsController.text.isNotEmpty;
+
+          _isLoading = false;
+        });
+      } else if (mounted) {
+        setState(() {
+          _isLoading = false;
         });
       }
+    } else if (mounted) {
+      // --- ADD mounted check ---
+      // --- ADD THIS ---
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -132,11 +164,17 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             'health_conditions': healthConditionsController.text.trim(),
             'status': 'verified',
           });
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => UserScreen()),
-      );
+          
+      if (widget.cameFromProfile) {
+        // If started from profile, pop back to it
+        Navigator.pop(context);
+      } else {
+        // Otherwise (e.g., first setup), go to the main UserScreen (Home)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => UserScreen()),
+        );
+      }
     }
   }
 
@@ -276,7 +314,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       case 8:
         return isHealthConditionsValid && healthConditionsController.text != "";
       case 9:
-        return isDietaryRestrictionsValid && dietaryRestrictionsController.text != "";
+        return isDietaryRestrictionsValid &&
+            dietaryRestrictionsController.text != "";
       default:
         return false;
     }
@@ -293,11 +332,20 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
+        if (_isLoading) return false;
+
         if (_currentPage == 0) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => UserScreen()),
-          );
+          if (userStatus == 'verified') {
+            Navigator.pop(
+              context
+            );
+          } else {
+            // If not verified/unknown, keep original behavior
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => UserScreen()),
+            );
+          }
           return false;
         } else {
           setState(() {
@@ -320,20 +368,28 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           leading: IconButton(
             icon: Icon(Icons.arrow_back),
             onPressed: () {
-              if (_currentPage == 0) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => UserScreen()),
-                );
-              } else {
-                setState(() {
-                  _currentPage--;
-                  _pageController.previousPage(
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
-                  );
-                });
-              }
+              if (_isLoading) return;
+                if (_currentPage == 0) {
+                  if (userStatus == 'verified') {
+                    Navigator.pop(
+                      context
+                    );
+                  } else {
+                    // If not verified/unknown, keep original behavior
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => UserScreen()),
+                    );
+                  }
+                } else {
+                  setState(() {
+                    _currentPage--;
+                    _pageController.previousPage(
+                      duration: Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  });
+                }
             },
           ),
         ),
@@ -434,7 +490,9 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                         padding: EdgeInsets.only(top: 10),
                         child: CircularProgressIndicator(),
                       ),
-                    if (!isHealthConditionsValid && !isCheckingHealthConditions && healthConditionsController.text != "")
+                    if (!isHealthConditionsValid &&
+                        !isCheckingHealthConditions &&
+                        healthConditionsController.text != "")
                       Text(
                         "❌ Please enter valid health conditions.",
                         style: TextStyle(color: Colors.red, fontSize: 14),
