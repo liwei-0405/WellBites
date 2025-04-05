@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'pages/login.dart';
 import 'pages/register.dart';
 import 'pages/user_home.dart';
+import 'pages/diet_log.dart';
 import 'widgets/custom_dialog.dart';
 
 void main() async {
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
         '/register': (context) => RegisterScreen(),
         '/user': (context) => UserScreen(),
         '/main': (context) => MainPage(),
+        '/dietLog': (context) => DietLogScreen(), 
       },
     );
   }
