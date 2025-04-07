@@ -4,8 +4,9 @@ import '../pages/about.dart';
 
 class HomeDrawer extends StatelessWidget {
   final Function(BuildContext) logoutCallback;
+  final VoidCallback refreshCallback;
 
-  HomeDrawer({required this.logoutCallback});
+  HomeDrawer({required this.logoutCallback, required this.refreshCallback});
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +45,9 @@ class HomeDrawer extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => PersonalPage()),
-                );
+                ).then((_) {
+                  refreshCallback(); // ✅ Refresh user image when returning
+                });
               },
             ),
             ListTile(
