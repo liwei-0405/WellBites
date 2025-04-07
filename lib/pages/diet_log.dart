@@ -23,7 +23,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
   final picker = ImagePicker();
   final TextEditingController _mealDetailsController = TextEditingController();
   final GenerativeModel model = GenerativeModel(
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash',
     apiKey: Secrets.geminiApiKey,
   );
   List<Map<String, dynamic>> todayMeals = [];
