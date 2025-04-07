@@ -9,7 +9,6 @@ import 'recipes_page.dart';
 import '../widgets/custom_dialog.dart';
 import '../widgets/home_drawer.dart';
 
-
 class UserScreen extends StatefulWidget {
   @override
   _UserScreenState createState() => _UserScreenState();
@@ -17,9 +16,14 @@ class UserScreen extends StatefulWidget {
 
 class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateMixin {
   int totalCalories = 0;
+  int totalProtein = 0;
+  int totalCarbs = 0;
+  int totalFat = 0;
 
   bool isChecking = true;
   bool isUnverified = false;
+
+  String _profileImageUrl = '';
 
   Map<String, bool> mealCompleted = {
     'Breakfast': false,
@@ -31,11 +35,54 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   late AnimationController _breathController;
   late Animation<double> _breathAnimation;
 
+  Stream<QuerySnapshot> get todayMealsStream {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Stream.empty();
+    }
+
+    final today = DateTime.now();
+    final startOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day));
+    final endOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59));
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('meals')
+        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+        .where('timestamp', isLessThanOrEqualTo: endOfDay)
+        .snapshots();
+  }
+
+  Future<QuerySnapshot> _fetchYesterdayMeals() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // Return an empty QuerySnapshot using a dummy query (guaranteed to return nothing)
+      return await FirebaseFirestore.instance
+          .collection('empty_collection')
+          .limit(0)
+          .get();
+    }
+
+    final yesterday = DateTime.now().subtract(Duration(days: 1));
+    final startOfDay = Timestamp.fromDate(DateTime(yesterday.year, yesterday.month, yesterday.day));
+    final endOfDay = Timestamp.fromDate(DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59));
+
+    return await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('meals')
+        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+        .where('timestamp', isLessThanOrEqualTo: endOfDay)
+        .get();
+  }
+
   @override
   void initState() {
     super.initState();
     _fetchTodayMealStatus();
-    checkUserStatus(); 
+    _fetchTodayNutritionSummary(); 
+    checkUserStatus();
 
     _breathController = AnimationController(
       vsync: this,
@@ -63,16 +110,17 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
-      if (userDoc.exists && userDoc['status'] == 'unverified') {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
         setState(() {
-          isUnverified = true;
+          isUnverified = data['status'] == 'unverified';
+          _profileImageUrl = data['profileImage'] ?? '';
         });
       }
     }
+
     setState(() {
       isChecking = false;
     });
@@ -127,6 +175,49 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     }
   }
 
+  Future<void> _fetchTodayNutritionSummary() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final today = DateTime.now();
+    final startOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day));
+    final endOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59));
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('meals')
+        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+        .where('timestamp', isLessThanOrEqualTo: endOfDay)
+        .get();
+
+    int calories = 0;
+    int protein = 0;
+    int carbs = 0;
+    int fat = 0;
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+
+      int parseValue(String? value) {
+        if (value == null) return 0;
+        return int.tryParse(value.split(' ').first) ?? 0;
+      }
+
+      calories += parseValue(data['calories']);
+      protein += parseValue(data['protein']);
+      carbs += parseValue(data['carbs']);
+      fat += parseValue(data['fat']);
+    }
+
+    setState(() {
+      totalCalories = calories;
+      totalProtein = protein;
+      totalCarbs = carbs;
+      totalFat = fat;
+    });
+  }
+
   void _navigateToDietLog(String category) {
     Navigator.pushNamed(context, '/dietLog', arguments: category).then((_) => _fetchTodayMealStatus());
   }
@@ -139,7 +230,15 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      endDrawer: HomeDrawer(logoutCallback: _logout),
+      endDrawer: HomeDrawer(
+        logoutCallback: _logout,
+        refreshCallback: () {
+          setState(() {
+            isChecking = true;
+          });
+          checkUserStatus();
+        },
+      ),
       body: isChecking
           ? Center(child: CircularProgressIndicator())
           : isUnverified
@@ -233,8 +332,68 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     );
   }
 
-
   Widget _buildProgressCard() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: todayMealsStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        int calories = 0, protein = 0, carbs = 0, fat = 0;
+        Map<String, bool> completed = {
+          'Breakfast': false,
+          'Lunch': false,
+          'Dinner': false,
+          'Extra Meal': false,
+        };
+
+        for (var doc in snapshot.data!.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          int parse(String? val) => val == null ? 0 : int.tryParse(val.split(' ').first) ?? 0;
+
+          calories += parse(data['calories']);
+          protein += parse(data['protein']);
+          carbs += parse(data['carbs']);
+          fat += parse(data['fat']);
+
+          final category = data['category'];
+          if (completed.containsKey(category)) {
+            completed[category] = true;
+          }
+        }
+
+        // Update state for tick icons
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          setState(() {
+            totalCalories = calories;
+            totalProtein = protein;
+            totalCarbs = carbs;
+            totalFat = fat;
+            mealCompleted = completed;
+          });
+        });
+
+        return _buildProgressCardContent();
+      },
+    );
+  }
+
+  Widget _buildProgressCardContent() {
+    // Calculate calorie contribution
+    final proteinCalories = totalProtein * 4;
+    final carbsCalories = totalCarbs * 4;
+    final fatCalories = totalFat * 9;
+    final macroCalories = proteinCalories + carbsCalories + fatCalories;
+
+    double proteinPercent = 0, carbsPercent = 0, fatPercent = 0;
+    if (macroCalories > 0) {
+      proteinPercent = (proteinCalories / macroCalories) * 100;
+      carbsPercent = (carbsCalories / macroCalories) * 100;
+      fatPercent = (fatCalories / macroCalories) * 100;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -254,14 +413,14 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
           Text("Today's Progress", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           Text("Calories", style: TextStyle(color: Colors.white70, fontSize: 14)),
-          Text("$totalCalories", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text("$totalCalories kcal", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMacroCircle("21%", "Fat", Color.fromRGBO(254, 198,53, 1)),
-              _buildMacroCircle("63%", "Pro", Color.fromRGBO(138, 71, 235, 1)),
-              _buildMacroCircle("85%", "Carb", Color.fromRGBO(250, 74, 12, 1)),
+              _buildMacroCircle("${fatPercent.toStringAsFixed(0)}%", "Fat", Color.fromRGBO(254, 198, 53, 1)),
+              _buildMacroCircle("${proteinPercent.toStringAsFixed(0)}%", "Protein", Color.fromRGBO(138, 71, 235, 1)),
+              _buildMacroCircle("${carbsPercent.toStringAsFixed(0)}%", "Carbs", Color.fromRGBO(250, 74, 12, 1)),
             ],
           ),
           const SizedBox(height: 10),
@@ -273,7 +432,12 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
             ),
             child: Row(
               children: [
-                CircleAvatar(radius: 14, backgroundImage: AssetImage('assets/icons/default_user_icon.png')),
+                CircleAvatar(
+                  radius: 14,
+                  backgroundImage: _profileImageUrl.isNotEmpty
+                      ? NetworkImage(_profileImageUrl)
+                      : AssetImage('assets/icons/default_user_icon.png') as ImageProvider,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text("🎉 Keep the pace! You're doing great.", style: TextStyle(color: Colors.white)),
@@ -287,6 +451,12 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildMacroCircle(String percent, String label, Color color) {
+    double value = 0;
+    try {
+      value = double.parse(percent.replaceAll('%', '')) / 100;
+    } catch (e) {
+      value = 0;
+    }
     return Column(
       children: [
         Container(
@@ -409,7 +579,6 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
             ),
             child: Stack(
               children: [
-                // Optional overlay for better text visibility
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
@@ -462,7 +631,6 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     );
   }
 
-
   Widget _buildTagChip(String label) {
     return Chip(
       label: Text(label),
@@ -477,44 +645,130 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildPastRecords() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return FutureBuilder<QuerySnapshot>(
+      future: _fetchYesterdayMeals(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return CircularProgressIndicator();
+        }
+
+        final docs = snapshot.data!.docs;
+
+        int protein = 0, carbs = 0, fat = 0;
+        int totalCalories = 0;
+
+        for (var doc in docs) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          int parseValue(String? value) {
+            if (value == null) return 0;
+            return int.tryParse(value.split(' ').first) ?? 0;
+          }
+
+          final p = parseValue(data['protein']);
+          final c = parseValue(data['carbs']);
+          final f = parseValue(data['fat']);
+          final cal = parseValue(data['calories']);
+
+          protein += p;
+          carbs += c;
+          fat += f;
+          totalCalories += cal;
+        }
+
+        final proteinKcal = protein * 4;
+        final carbsKcal = carbs * 4;
+        final fatKcal = fat * 9;
+        final macroTotal = proteinKcal + carbsKcal + fatKcal;
+
+        double proteinRatio = macroTotal > 0 ? proteinKcal / macroTotal : 0;
+        double carbsRatio = macroTotal > 0 ? carbsKcal / macroTotal : 0;
+        double fatRatio = macroTotal > 0 ? fatKcal / macroTotal : 0;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Past Records", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            TextButton(onPressed: () {}, child: Text("View more")),
-          ],
-        ),
-        Container(
-          height: 180,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  height: 100,
-                  width: 100,
-                  child: CircularProgressIndicator(
-                    value: 0.25,
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey.shade300,
-                    color: Colors.blue,
-                  ),
+                Text("Past Records", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/pastRecords');
+                  },
+                  child: Text("View more"),
                 ),
-                const SizedBox(height: 10),
-                Text("Total Burned - 500 kcal", style: TextStyle(fontSize: 14)),
-                Text("Monthly Goal", style: TextStyle(fontSize: 12, color: Colors.grey)),
               ],
             ),
-          ),
-        ),
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Yesterday: $totalCalories kcal", style: TextStyle(fontSize: 16)),
+                  const SizedBox(height: 10),
+                  Stack(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: (proteinRatio * 100).round(),
+                            child: Container(height: 20, color: Colors.purple),
+                          ),
+                          Expanded(
+                            flex: (carbsRatio * 100).round(),
+                            child: Container(height: 20, color: Colors.orange),
+                          ),
+                          Expanded(
+                            flex: (fatRatio * 100).round(),
+                            child: Container(height: 20, color: Colors.yellow),
+                          ),
+                        ],
+                      ),
+                      Positioned.fill(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Text("Protein", style: TextStyle(color: Colors.white, fontSize: 10)),
+                            Text("Carbs", style: TextStyle(color: Colors.white, fontSize: 10)),
+                            Text("Fat", style: TextStyle(color: Colors.black87, fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildMacroLabel("Protein", protein, Colors.purple),
+                      _buildMacroLabel("Carbs", carbs, Colors.orange),
+                      _buildMacroLabel("Fat", fat, Colors.yellow),
+                    ],
+                  )
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMacroLabel(String label, int grams, Color color) {
+    return Column(
+      children: [
+        CircleAvatar(radius: 6, backgroundColor: color),
+        SizedBox(height: 4),
+        Text("$label: $grams g", style: TextStyle(fontSize: 12)),
       ],
     );
   }
+
+
+
 }
