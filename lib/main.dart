@@ -7,6 +7,7 @@ import 'pages/login.dart';
 import 'pages/register.dart';
 import 'pages/user_home.dart';
 import 'pages/diet_log.dart';
+import 'pages/past_records.dart';
 import 'widgets/custom_dialog.dart';
 
 void main() async {
@@ -29,6 +30,7 @@ class MyApp extends StatelessWidget {
         '/user': (context) => UserScreen(),
         '/main': (context) => MainPage(),
         '/dietLog': (context) => DietLogScreen(), 
+        '/pastRecords': (context) => PastRecordsPage(),
       },
     );
   }
