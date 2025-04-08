@@ -254,94 +254,153 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      endDrawer: HomeDrawer(
-        logoutCallback: _logout,
-        refreshCallback: () {
-          setState(() {
-            isChecking = true;
-          });
-          checkUserStatus();
-        },
-      ),
-      body: isChecking
-          ? Center(child: CircularProgressIndicator())
-          : isUnverified
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Please complete your details\n before using the app.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => UserDetailsScreen(),
+    return WillPopScope(
+      onWillPop: () async {
+        bool exitApp = await showDialog(
+          context: context,
+          builder:
+              (context) => ConfirmationDialog(
+                message: "Are you sure you want to exit?",
+                confirmText: "Exit",
+                cancelText: "Cancel",
+                onConfirm: () => Navigator.of(context).pop(true),
+                onCancel: () => Navigator.of(context).pop(false),
+              ),
+        );
+        return exitApp ?? false;
+      },
+      child:
+          isChecking
+              ? Scaffold(body: Center(child: CircularProgressIndicator()))
+              : Scaffold(
+                extendBodyBehindAppBar: true,
+                endDrawer: HomeDrawer(
+                  logoutCallback: _logout,
+                  refreshCallback: () {
+                    setState(() {
+                      isChecking = true;
+                    });
+                    checkUserStatus();
+                  },
+                ),
+                body:
+                    isChecking
+                        ? Center(child: CircularProgressIndicator())
+                        : isUnverified
+                        ? Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color.fromRGBO(236, 234, 194, 1),
+                                Color.fromRGBO(245, 219, 206, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                              ],
                             ),
-                          );
-                        },
-                        child: Text("Complete Details"),
-                      ),
-                    ],
-                  ),
-                )
-        : Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color.fromRGBO(236, 234, 194, 1),
-                Color.fromRGBO(245, 219, 206, 1),
-                Color.fromRGBO(255, 251, 255, 1),
-                Color.fromRGBO(255, 251, 255, 1),
-                Color.fromRGBO(255, 251, 255, 1),
-              ],
-            ),
-          ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 16),
-                  _buildProgressCard(),
-                  const SizedBox(height: 20),
-                  _buildDietLog(),
-                  const SizedBox(height: 20),
-                  _buildRecommendationSection(),
-                  const SizedBox(height: 20),
-                  _buildPastRecords(),
-                ],
+                          ),
+                          child: SafeArea(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildHeader(),
+                                  const SizedBox(height: 16),
+                                  Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "Please complete your details\n before using the app.",
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(height: 20),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            Navigator.pushReplacement(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder:
+                                                    (context) =>
+                                                        UserDetailsScreen(cameFromProfile: false,),
+                                              ),
+                                            );
+                                          },
+                                          child: Text("Complete Details"),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                        : Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color.fromRGBO(236, 234, 194, 1),
+                                Color.fromRGBO(245, 219, 206, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                              ],
+                            ),
+                          ),
+                          child: SafeArea(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildHeader(),
+                                  const SizedBox(height: 16),
+                                  _buildProgressCard(),
+                                  const SizedBox(height: 20),
+                                  _buildDietLog(),
+                                  const SizedBox(height: 20),
+                                  _buildRecommendationSection(),
+                                  const SizedBox(height: 20),
+                                  _buildPastRecords(),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                floatingActionButton:
+                    isUnverified
+                        ? null
+                        : FloatingActionButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(),
+                              ),
+                            );
+                          },
+                          child: Icon(Icons.face),
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            255,
+                            207,
+                            231,
+                          ),
+                        ),
               ),
-            ),
-          ),
-        ),
-      floatingActionButton: isUnverified
-      ? null
-      : FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatScreen(),
-              ),
-            );
-          },
-          child: Icon(Icons.face),
-          backgroundColor: const Color.fromARGB(255, 255, 207, 231),
-        ),
-      );
-    }
+    );
+  }
 
   Widget _buildHeader() {
     return Row(
