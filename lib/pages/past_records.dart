@@ -91,6 +91,7 @@ class _PastRecordsPageState extends State<PastRecordsPage> {
 
   Widget _buildMealCard(Map<String, dynamic> meal) {
     final imageUrl = meal['imageUrl'] as String?;
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 3,
@@ -111,17 +112,44 @@ class _PastRecordsPageState extends State<PastRecordsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(meal['meal'] ?? '-', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    meal['meal'] ?? '-',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
+                  ),
                   SizedBox(height: 4),
-                  Text(meal['description'] ?? '-', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                  Text(
+                    meal['description'] ?? '-',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
+                  ),
                   SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       _nutrientChip("Protein", meal['protein']),
                       _nutrientChip("Carbs", meal['carbs']),
                       _nutrientChip("Fat", meal['fat']),
-                      Text(meal['calories'] ?? '0 kcal', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            meal['calories'] ?? '0 kcal',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -141,7 +169,14 @@ class _PastRecordsPageState extends State<PastRecordsPage> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      child: Text("$label: ${value ?? '0'}", style: TextStyle(fontSize: 12)),
+      constraints: BoxConstraints(minWidth: 60),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          "$label: ${value ?? '0'}",
+          style: TextStyle(fontSize: 12),
+        ),
+      ),
     );
   }
 
