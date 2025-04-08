@@ -15,13 +15,14 @@ class UserScreen extends StatefulWidget {
   _UserScreenState createState() => _UserScreenState();
 }
 
-class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateMixin {
+class _UserScreenState extends State<UserScreen>
+    with SingleTickerProviderStateMixin {
   int totalCalories = 0;
   int totalProtein = 0;
   int totalCarbs = 0;
   int totalFat = 0;
 
-  int _lastCalories = -1; 
+  int _lastCalories = -1;
 
   String _progressMessage = "🎉 Keep the pace! You're doing great.";
 
@@ -47,8 +48,12 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     }
 
     final today = DateTime.now();
-    final startOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day));
-    final endOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59));
+    final startOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day),
+    );
+    final endOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day, 23, 59, 59),
+    );
 
     return FirebaseFirestore.instance
         .collection('users')
@@ -65,7 +70,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
     final data = userDoc.data() as Map<String, dynamic>?;
 
     final goal = data?['main_goals'] ?? 'Improved Health';
@@ -89,8 +98,12 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     }
 
     final yesterday = DateTime.now().subtract(Duration(days: 1));
-    final startOfDay = Timestamp.fromDate(DateTime(yesterday.year, yesterday.month, yesterday.day));
-    final endOfDay = Timestamp.fromDate(DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59));
+    final startOfDay = Timestamp.fromDate(
+      DateTime(yesterday.year, yesterday.month, yesterday.day),
+    );
+    final endOfDay = Timestamp.fromDate(
+      DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59),
+    );
 
     return await FirebaseFirestore.instance
         .collection('users')
@@ -105,7 +118,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _fetchTodayMealStatus();
-    _fetchTodayNutritionSummary(); 
+    _fetchTodayNutritionSummary();
     checkUserStatus();
 
     _breathController = AnimationController(
@@ -134,7 +147,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
 
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
@@ -180,18 +196,23 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     if (user == null) return;
 
     final today = DateTime.now();
-    final startOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day));
-    final endOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59));
+    final startOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day),
+    );
+    final endOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day, 23, 59, 59),
+    );
 
     for (var category in mealCompleted.keys) {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('meals')
-          .where('category', isEqualTo: category)
-          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-          .where('timestamp', isLessThanOrEqualTo: endOfDay)
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('meals')
+              .where('category', isEqualTo: category)
+              .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+              .where('timestamp', isLessThanOrEqualTo: endOfDay)
+              .get();
 
       setState(() {
         mealCompleted[category] = snapshot.docs.isNotEmpty;
@@ -204,16 +225,21 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     if (user == null) return;
 
     final today = DateTime.now();
-    final startOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day));
-    final endOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59));
+    final startOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day),
+    );
+    final endOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day, 23, 59, 59),
+    );
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('meals')
-        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-        .where('timestamp', isLessThanOrEqualTo: endOfDay)
-        .get();
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('meals')
+            .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+            .where('timestamp', isLessThanOrEqualTo: endOfDay)
+            .get();
 
     int calories = 0;
     int protein = 0;
@@ -245,7 +271,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   }
 
   void _navigateToDietLog(String category) {
-    Navigator.pushNamed(context, '/dietLog', arguments: category).then((_) => _fetchTodayMealStatus());
+    Navigator.pushNamed(
+      context,
+      '/dietLog',
+      arguments: category,
+    ).then((_) => _fetchTodayMealStatus());
   }
 
   void _navigateToSuggestions() {
@@ -254,94 +284,153 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      endDrawer: HomeDrawer(
-        logoutCallback: _logout,
-        refreshCallback: () {
-          setState(() {
-            isChecking = true;
-          });
-          checkUserStatus();
-        },
-      ),
-      body: isChecking
-          ? Center(child: CircularProgressIndicator())
-          : isUnverified
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Please complete your details\n before using the app.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => UserDetailsScreen(),
+    return WillPopScope(
+      onWillPop: () async {
+        bool exitApp = await showDialog(
+          context: context,
+          builder:
+              (context) => ConfirmationDialog(
+                message: "Are you sure you want to exit?",
+                confirmText: "Exit",
+                cancelText: "Cancel",
+                onConfirm: () => Navigator.of(context).pop(true),
+                onCancel: () => Navigator.of(context).pop(false),
+              ),
+        );
+        return exitApp ?? false;
+      },
+      child:
+          isChecking
+              ? Scaffold(body: Center(child: CircularProgressIndicator()))
+              : Scaffold(
+                extendBodyBehindAppBar: true,
+                endDrawer: HomeDrawer(
+                  logoutCallback: _logout,
+                  refreshCallback: () {
+                    setState(() {
+                      isChecking = true;
+                    });
+                    checkUserStatus();
+                  },
+                ),
+                body:
+                    isChecking
+                        ? Center(child: CircularProgressIndicator())
+                        : isUnverified
+                        ? Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color.fromRGBO(236, 234, 194, 1),
+                                Color.fromRGBO(245, 219, 206, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                              ],
                             ),
-                          );
-                        },
-                        child: Text("Complete Details"),
-                      ),
-                    ],
-                  ),
-                )
-        : Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color.fromRGBO(236, 234, 194, 1),
-                Color.fromRGBO(245, 219, 206, 1),
-                Color.fromRGBO(255, 251, 255, 1),
-                Color.fromRGBO(255, 251, 255, 1),
-                Color.fromRGBO(255, 251, 255, 1),
-              ],
-            ),
-          ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 16),
-                  _buildProgressCard(),
-                  const SizedBox(height: 20),
-                  _buildDietLog(),
-                  const SizedBox(height: 20),
-                  _buildRecommendationSection(),
-                  const SizedBox(height: 20),
-                  _buildPastRecords(),
-                ],
+                          ),
+                          child: SafeArea(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildHeader(),
+                                  const SizedBox(height: 16),
+                                  Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "Please complete your details\n before using the app.",
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(height: 20),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            Navigator.pushReplacement(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder:
+                                                    (context) =>
+                                                        UserDetailsScreen(cameFromProfile: false,),
+                                              ),
+                                            );
+                                          },
+                                          child: Text("Complete Details"),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                        : Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color.fromRGBO(236, 234, 194, 1),
+                                Color.fromRGBO(245, 219, 206, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                                Color.fromRGBO(255, 251, 255, 1),
+                              ],
+                            ),
+                          ),
+                          child: SafeArea(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildHeader(),
+                                  const SizedBox(height: 16),
+                                  _buildProgressCard(),
+                                  const SizedBox(height: 20),
+                                  _buildDietLog(),
+                                  const SizedBox(height: 20),
+                                  _buildRecommendationSection(),
+                                  const SizedBox(height: 20),
+                                  _buildPastRecords(),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                floatingActionButton:
+                    isUnverified
+                        ? null
+                        : FloatingActionButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(),
+                              ),
+                            );
+                          },
+                          child: Icon(Icons.face),
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            255,
+                            207,
+                            231,
+                          ),
+                        ),
               ),
-            ),
-          ),
-        ),
-      floatingActionButton: isUnverified
-      ? null
-      : FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatScreen(),
-              ),
-            );
-          },
-          child: Icon(Icons.face),
-          backgroundColor: const Color.fromARGB(255, 255, 207, 231),
-        ),
-      );
-    }
+    );
+  }
 
   Widget _buildHeader() {
     return Row(
@@ -349,10 +438,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
       children: [
         Image.asset('assets/icons/adaptive_icon_foreground.png', height: 40),
         Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: Colors.black),
-            onPressed: () => Scaffold.of(context).openEndDrawer(),
-          ),
+          builder:
+              (context) => IconButton(
+                icon: Icon(Icons.menu, color: Colors.black),
+                onPressed: () => Scaffold.of(context).openEndDrawer(),
+              ),
         ),
       ],
     );
@@ -377,7 +467,8 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
         for (var doc in snapshot.data!.docs) {
           final data = doc.data() as Map<String, dynamic>;
 
-          int parse(String? val) => val == null ? 0 : int.tryParse(val.split(' ').first) ?? 0;
+          int parse(String? val) =>
+              val == null ? 0 : int.tryParse(val.split(' ').first) ?? 0;
 
           calories += parse(data['calories']);
           protein += parse(data['protein']);
@@ -441,17 +532,46 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Today's Progress", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            "Today's Progress",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text("Calories", style: TextStyle(color: Colors.white70, fontSize: 14)),
-          Text("$totalCalories kcal", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(
+            "Calories",
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          Text(
+            "$totalCalories kcal",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMacroCircle("${fatPercent.toStringAsFixed(0)}%", "Fat", Color.fromRGBO(254, 198, 53, 1)),
-              _buildMacroCircle("${proteinPercent.toStringAsFixed(0)}%", "Protein", Color.fromRGBO(138, 71, 235, 1)),
-              _buildMacroCircle("${carbsPercent.toStringAsFixed(0)}%", "Carbs", Color.fromRGBO(250, 74, 12, 1)),
+              _buildMacroCircle(
+                "${fatPercent.toStringAsFixed(0)}%",
+                "Fat",
+                Color.fromRGBO(254, 198, 53, 1),
+              ),
+              _buildMacroCircle(
+                "${proteinPercent.toStringAsFixed(0)}%",
+                "Protein",
+                Color.fromRGBO(138, 71, 235, 1),
+              ),
+              _buildMacroCircle(
+                "${carbsPercent.toStringAsFixed(0)}%",
+                "Carbs",
+                Color.fromRGBO(250, 74, 12, 1),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -465,17 +585,22 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundImage: _profileImageUrl.isNotEmpty
-                      ? NetworkImage(_profileImageUrl)
-                      : AssetImage('assets/icons/default_user_icon.png') as ImageProvider,
+                  backgroundImage:
+                      _profileImageUrl.isNotEmpty
+                          ? NetworkImage(_profileImageUrl)
+                          : AssetImage('assets/icons/default_user_icon.png')
+                              as ImageProvider,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(_progressMessage, style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    _progressMessage,
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -502,7 +627,14 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                 color: color,
                 strokeWidth: 5,
               ),
-              Text(percent, style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(
+                percent,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -516,7 +648,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Diet Log", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          "Diet Log",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -534,7 +669,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
               _mealIcon("Extra Meal", 'assets/icons/extra_meal.png'),
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -562,7 +697,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                   ),
                 );
               },
-              child: Icon(Icons.add_circle_outline, size: 16, color: Colors.grey.shade700),
+              child: Icon(
+                Icons.add_circle_outline,
+                size: 16,
+                color: Colors.grey.shade700,
+              ),
             ),
           ],
         ),
@@ -597,7 +736,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
               image: DecorationImage(
                 image: AssetImage('assets/icons/healthy_illustration.jpg'),
                 fit: BoxFit.cover,
-                alignment: Alignment.center, 
+                alignment: Alignment.center,
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
@@ -605,7 +744,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                   color: Colors.grey.withOpacity(0.3),
                   blurRadius: 10,
                   offset: Offset(0, 6),
-                )
+                ),
               ],
             ),
             child: Stack(
@@ -621,14 +760,19 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.favorite, size: 35, color: const Color.fromARGB(255, 255, 255, 255)),
+                      Icon(
+                        Icons.favorite,
+                        size: 35,
+                        color: const Color.fromARGB(255, 255, 255, 255),
+                      ),
                       const SizedBox(height: 6),
                       ScaleTransition(
                         scale: _breathAnimation,
                         child: Text(
                           "Tap to see recommended healthy recipes!",
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 25,
+                            fontSize: 20,
                             color: Colors.white,
                             fontWeight: FontWeight.w500,
                           ),
@@ -653,11 +797,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                       ],
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),
-        )
+        ),
       ],
     );
   }
@@ -722,7 +866,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Past Records", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  "Past Records",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 TextButton(
                   onPressed: () {
                     Navigator.pushNamed(context, '/pastRecords');
@@ -740,7 +887,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Yesterday: $totalCalories kcal", style: TextStyle(fontSize: 16)),
+                  Text(
+                    "Yesterday: $totalCalories kcal",
+                    style: TextStyle(fontSize: 16),
+                  ),
                   const SizedBox(height: 10),
                   Stack(
                     children: [
@@ -764,9 +914,27 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            Text("Protein", style: TextStyle(color: Colors.white, fontSize: 10)),
-                            Text("Carbs", style: TextStyle(color: Colors.white, fontSize: 10)),
-                            Text("Fat", style: TextStyle(color: Colors.black87, fontSize: 10)),
+                            Text(
+                              "Protein",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
+                            Text(
+                              "Carbs",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
+                            Text(
+                              "Fat",
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 10,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -780,7 +948,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                       _buildMacroLabel("Carbs", carbs, Colors.orange),
                       _buildMacroLabel("Fat", fat, Colors.yellow),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
