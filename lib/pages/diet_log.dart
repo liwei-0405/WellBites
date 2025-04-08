@@ -114,7 +114,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
         _imageBytes = bytes;
         if (!kIsWeb) _imageFile = File(pickedFile.path);
       });
-      _analyzeImage(bytes, mimeType); // pass mimeType!
+      _analyzeImage(bytes, mimeType); 
     }
   }
 
@@ -247,7 +247,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
 
     String? imageUrl;
     if (imageBytes != null) {
-      imageUrl = await uploadImageToCloudinary(imageBytes); // 🔁 Cloudinary upload
+      imageUrl = await uploadImageToCloudinary(imageBytes); 
     }
 
     final data = {
@@ -259,7 +259,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
       'protein': parsed['protein'] ?? '0 g',
       'carbs': parsed['carbs'] ?? '0 g',
       'timestamp': Timestamp.now(),
-      if (imageUrl != null) 'imageUrl': imageUrl, // ✅ Save the URL instead of bytes
+      if (imageUrl != null) 'imageUrl': imageUrl, 
     };
 
     await FirebaseFirestore.instance
@@ -544,7 +544,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
     required Map<String, dynamic> fullMealData,
   }) {
     final String? imageUrl = fullMealData['imageUrl'];
-    
+
     return Column(
       children: [
         Card(
@@ -553,6 +553,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (imageUrl != null) ...[
                   ClipRRect(
@@ -565,48 +566,73 @@ class _DietLogScreenState extends State<DietLogScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(meal, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(description, style: TextStyle(fontSize: 14, color: Colors.grey[700]))
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  meal,
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  description,
+                                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              ],
+                            ),
+                          ),
+                          if (docId.isNotEmpty)
+                            Column(
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.edit, color: Colors.blue),
+                                  onPressed: () {
+                                    final image = fullMealData['image'] != null
+                                        ? Uint8List.fromList(List<int>.from(fullMealData['image']))
+                                        : null;
+                                    _showEditMealDialog(docId, image);
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () async {
+                                    final shouldDelete = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text('Delete Meal?'),
+                                        content: Text('Are you sure you want to delete this meal?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context, false),
+                                            child: Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context, true),
+                                            child: Text('Delete', style: TextStyle(color: Colors.red)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (shouldDelete ?? false) {
+                                      await deleteMeal(docId);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-                if (docId.isNotEmpty)
-                  IconButton(
-                    icon: Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () {
-                      final image = fullMealData['image'] != null
-                          ? Uint8List.fromList(List<int>.from(fullMealData['image']))
-                          : null;
-                      _showEditMealDialog(docId, image);
-                    },
-                  ),
-                IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () async {
-                    final shouldDelete = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text('Delete Meal?'),
-                        content: Text('Are you sure you want to delete this meal?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: Text('Delete', style: TextStyle(color: Colors.red)),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    if (shouldDelete ?? false) {
-                      await deleteMeal(docId);
-                    }
-                  },
-                )
               ],
             ),
           ),
@@ -616,7 +642,7 @@ class _DietLogScreenState extends State<DietLogScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 3,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -633,12 +659,20 @@ class _DietLogScreenState extends State<DietLogScreen> {
   }
 
   Widget _buildNutritionItem(String label, String value) {
-    return Column(
-      children: [
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600]))
-      ],
+    return Flexible(
+      child: Column(
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          )
+        ],
+      ),
     );
   }
 
