@@ -122,6 +122,29 @@ class GeminiService {
     }
   }
 
+  Future<String> generateProgressFeedback(String prompt) async {
+    try {
+      final userData = await getUserData();
+      if (userData == null) return "Unable to generate feedback without user data.";
+
+      final content = Content.text("""
+  You are a helpful AI that gives a friendly, personalized, one-sentence feedback based on the user's daily calorie intake and goal.
+
+  User Info:
+  - Goal: ${userData['main_goals']}
+  - Today's Calories: $prompt
+
+  Give a natural, supportive, **one-sentence message** only. Do not add multiple options or explanations.
+  """);
+
+      final response = await model.generateContent([content]);
+
+      return response.text?.trim() ?? "Keep up the great work!";
+    } catch (e) {
+      return "Error generating feedback.";
+    }
+  }
+
   Future<void> generateAndSaveRecipes(String extra) async {
     Map<String, dynamic>? userData = await getUserData();
     final User? user = _auth.currentUser;
