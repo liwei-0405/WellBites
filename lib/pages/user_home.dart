@@ -8,6 +8,7 @@ import 'user_details.dart';
 import 'recipes_page.dart';
 import '../widgets/custom_dialog.dart';
 import '../widgets/home_drawer.dart';
+import '../services/gemini_service.dart';
 
 class UserScreen extends StatefulWidget {
   @override
@@ -19,6 +20,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   int totalProtein = 0;
   int totalCarbs = 0;
   int totalFat = 0;
+
+  int _lastCalories = -1; 
+
+  String _progressMessage = "🎉 Keep the pace! You're doing great.";
 
   bool isChecking = true;
   bool isUnverified = false;
@@ -54,10 +59,29 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
         .snapshots();
   }
 
+  final GeminiService _geminiService = GeminiService();
+
+  Future<void> _generateProgressMessage() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final data = userDoc.data() as Map<String, dynamic>?;
+
+    final goal = data?['main_goals'] ?? 'Improved Health';
+
+    final prompt = "$totalCalories kcal for a goal of $goal";
+
+    final aiResponse = await _geminiService.generateProgressFeedback(prompt);
+
+    setState(() {
+      _progressMessage = aiResponse.trim();
+    });
+  }
+
   Future<QuerySnapshot> _fetchYesterdayMeals() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      // Return an empty QuerySnapshot using a dummy query (guaranteed to return nothing)
       return await FirebaseFirestore.instance
           .collection('empty_collection')
           .limit(0)
@@ -216,6 +240,8 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
       totalCarbs = carbs;
       totalFat = fat;
     });
+
+    await _generateProgressMessage();
   }
 
   void _navigateToDietLog(String category) {
@@ -364,15 +390,21 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
           }
         }
 
-        // Update state for tick icons
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          setState(() {
-            totalCalories = calories;
-            totalProtein = protein;
-            totalCarbs = carbs;
-            totalFat = fat;
-            mealCompleted = completed;
-          });
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (mounted) {
+            setState(() {
+              totalCalories = calories;
+              totalProtein = protein;
+              totalCarbs = carbs;
+              totalFat = fat;
+              mealCompleted = completed;
+            });
+
+            if (_lastCalories != calories) {
+              _lastCalories = calories;
+              await _generateProgressMessage();
+            }
+          }
         });
 
         return _buildProgressCardContent();
@@ -381,7 +413,6 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildProgressCardContent() {
-    // Calculate calorie contribution
     final proteinCalories = totalProtein * 4;
     final carbsCalories = totalCarbs * 4;
     final fatCalories = totalFat * 9;
@@ -440,7 +471,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text("🎉 Keep the pace! You're doing great.", style: TextStyle(color: Colors.white)),
+                  child: Text(_progressMessage, style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
@@ -768,7 +799,4 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
       ],
     );
   }
-
-
-
 }
