@@ -1055,15 +1055,26 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
     if (field != "Weight") {
       if (selectedMainGoal == "Weight Gain") {
         minWeight = selectedWeight + 0.1;
-        initial_Weight = (minWeight > selectedTargetWeight!?minWeight:selectedTargetWeight)!;
+        if (selectedTargetWeight != null) {
+          initial_Weight = selectedTargetWeight!.clamp(minWeight, maxWeight);
+        } else {
+          initial_Weight = minWeight;
+        }
       } else if (selectedMainGoal == "Weight Loss") {
         maxWeight = selectedWeight - 0.1;
-        initial_Weight = (maxWeight < selectedTargetWeight!?maxWeight:selectedTargetWeight)!;
+        if (selectedTargetWeight != null) {
+          initial_Weight = selectedTargetWeight!.clamp(minWeight, maxWeight);
+        } else {
+          initial_Weight = maxWeight;
+        }
       } else if (selectedMainGoal == "Improved Health") {
-        minWeight = BMIminWeight;
-        maxWeight = BMImaxWeight;
-        minWeight = minWeight.clamp(30, 200);
-        maxWeight = maxWeight.clamp(30, 200);
+        minWeight = BMIminWeight.clamp(30, 200);
+        maxWeight = BMImaxWeight.clamp(30, 200);
+        if (selectedTargetWeight != null) {
+          initial_Weight = selectedTargetWeight!.clamp(minWeight, maxWeight);
+        } else {
+          initial_Weight = (minWeight + maxWeight) / 2;
+        }
       }
     }
 
