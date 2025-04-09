@@ -297,7 +297,7 @@ class _PersonalPageState extends State<PersonalPage> {
 
                 SizedBox(height: screenHeight * 0.01),
                 // --- Menu Items ---
-                                ProfileWidget(title: 'Profile', icon: Icons.account_box_outlined, onPress: () => Navigator.push(context, MaterialPageRoute(builder: (context) => UserDetailsScreen(sourceScreen: "Profile")))),
+                ProfileWidget(title: 'Update Profile', icon: Icons.account_box_outlined, onPress: () => Navigator.push(context, MaterialPageRoute(builder: (context) => UserDetailsScreen(sourceScreen: "Profile")))),
                 ProfileWidget(title: 'Favourite', icon: Icons.star_border, onPress: () {}),
                 ProfileWidget(title: 'Privacy Policy', icon: Icons.privacy_tip_outlined, onPress: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PrivacyPolicyPage()))),
                 ProfileWidget(title: 'Settings', icon: Icons.settings_outlined, onPress: () {}),

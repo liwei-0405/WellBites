@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../secrets.dart';
 
 Future<Uint8List?> pickImage(ImageSource source) async {
   final ImagePicker imagePicker = ImagePicker();
@@ -15,9 +16,8 @@ Future<Uint8List?> pickImage(ImageSource source) async {
 
 Future<String?> uploadImageToCloudinary(Uint8List imageBytes) async {
   try {
-    String cloudName =
-        "dhonymxt5"; // 
-    String uploadPreset = "g4dunglr"; 
+    String cloudName = Secrets.cloudName; //
+    String uploadPreset = Secrets.uploadPreset;
 
     var request = http.MultipartRequest(
       'POST',
