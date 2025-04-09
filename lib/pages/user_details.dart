@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
 import '../widgets/height_selector.dart';
 import '../widgets/weight_picker.dart';
 import '../widgets/gender_option.dart';
@@ -10,16 +9,16 @@ import 'dart:async';
 import 'user_home.dart';
 
 class UserDetailsScreen extends StatefulWidget {
-  final bool cameFromProfile;
+  final String sourceScreen;
 
-  const UserDetailsScreen({super.key, this.cameFromProfile = false});
-  
+  const UserDetailsScreen({super.key, this.sourceScreen = "Profile"});
+
   @override
   _UserDetailsScreenState createState() => _UserDetailsScreenState();
 }
 
 class _UserDetailsScreenState extends State<UserDetailsScreen> {
-  final PageController _pageController = PageController();
+  late PageController _pageController;
   int _currentPage = 0;
 
   final TextEditingController usernameController = TextEditingController();
@@ -28,53 +27,113 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   final TextEditingController healthConditionsController =
       TextEditingController();
 
+  bool _isLoading = true;
   // get firestore user's details , if insert before
+
+  void _triggerRebuild() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    loadUserData();
+    usernameController.addListener(_triggerRebuild);
+    // Call the async initialization function
+    _initializeScreen();
   }
 
-  void loadUserData() async {
+  // New async initialization function
+  Future<void> _initializeScreen() async {
+    // Determine initial page
+    int initialPage = 0;
+    if (widget.sourceScreen == "Weight") {
+      initialPage = 4;
+    }
+    _currentPage = initialPage;
+    // Initialize PageController here
+    _pageController = PageController(initialPage: initialPage);
+
+    // Load user data and wait for it to complete BEFORE building the main UI
+    await loadUserData();
+
+    // Set loading to false after data is loaded (or failed to load)
+    // Note: loadUserData now handles setting _isLoading to false inside setState
+    // If loadUserData might complete without calling setState (e.g., if !mounted early),
+    // ensure _isLoading is set false here too, but it's cleaner within loadUserData.
+  }
+
+  Future<void> loadUserData() async {
+    // Keep _isLoading true until data is processed or an error occurs
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
+      try {
+        DocumentSnapshot userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
 
-      if (userDoc.exists) {
+        if (mounted && userDoc.exists) {
+          // Check mounted BEFORE setState
+          final data = userDoc.data() as Map<String, dynamic>; // Safer access
+          setState(() {
+            usernameController.text = data['username'] ?? "";
+            selectedGender = data['gender'];
+            selectedBirthday =
+                data['birthday'] != null
+                    ? DateTime.parse(data['birthday'])
+                    : DateTime(2000, 1, 1);
+            selectedHeight = data['height']?.toDouble() ?? 165;
+            selectedWeight =
+                data['weight']?.toDouble() ?? 45; // Assign Firestore weight
+            selectedYear = selectedBirthday!.year;
+            selectedMonth = selectedBirthday!.month;
+            selectedDay = selectedBirthday!.day;
+            selectedMainGoal = data['main_goals'];
+            selectedTargetWeight = data['target_weight']?.toDouble();
+            selectedGoalDate =
+                data['goal_date'] != null
+                    ? DateTime.parse(data['goal_date'])
+                    : DateTime.now();
+            selectedGoalYear = selectedGoalDate!.year;
+            selectedGoalMonth = selectedGoalDate!.month;
+            selectedGoalDay = selectedGoalDate!.day;
+            dietaryRestrictionsController.text =
+                data['dietary_restrictions'] ?? "";
+            healthConditionsController.text = data['health_conditions'] ?? "";
+            // Use '?? 0' for initialweight if it must be non-nullable double
+            initialweight = data['weight']?.toDouble() ?? 0;
+            isHealthConditionsValid =
+                healthConditionsController.text.isNotEmpty;
+            isDietaryRestrictionsValid =
+                dietaryRestrictionsController.text.isNotEmpty;
+
+            _isLoading = false; // Data loaded, stop loading
+          });
+        } else if (mounted) {
+          // Document doesn't exist or component unmounted before getting data
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        print("Error loading user data: $e");
+        if (mounted) {
+          // Check mounted before setState on error
+          setState(() {
+            _isLoading = false;
+          }); // Stop loading on error
+        }
+      }
+    } else {
+      // No user logged in
+      if (mounted) {
+        // Check mounted before setState
         setState(() {
-          usernameController.text = userDoc['username'] ?? "";
-          selectedGender = userDoc['gender'];
-          selectedBirthday =
-              userDoc['birthday'] != null
-                  ? DateTime.parse(userDoc['birthday'])
-                  : DateTime(2000, 1, 1);
-          selectedHeight = userDoc['height']?.toDouble() ?? 165;
-          selectedWeight = userDoc['weight']?.toDouble() ?? 45;
-          selectedYear = selectedBirthday!.year;
-          selectedMonth = selectedBirthday!.month;
-          selectedDay = selectedBirthday!.day;
-          selectedMainGoal = userDoc['main_goals'];
-          selectedTargetWeight = userDoc['target_weight']?.toDouble();
-          selectedGoalDate =
-              userDoc['goal_date'] != null
-                  ? DateTime.parse(userDoc['goal_date'])
-                  : DateTime.now();
-          selectedGoalYear = selectedGoalDate!.year;
-          selectedGoalMonth = selectedGoalDate!.month;
-          selectedGoalDay = selectedGoalDate!.day;
-          dietaryRestrictionsController.text =
-              userDoc['dietary_restrictions'] ?? "";
-          healthConditionsController.text = userDoc['health_conditions'] ?? "";
-          initialweight = userDoc['weight']?.toDouble() ?? null;
-          //means last time already checked by ai
-          isHealthConditionsValid = healthConditionsController.text.isNotEmpty;
-          isDietaryRestrictionsValid =
-              dietaryRestrictionsController.text.isNotEmpty;
-        });
+          _isLoading = false;
+        }); // Stop loading if no user
       }
     }
   }
@@ -115,6 +174,9 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   void saveUserDetails() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      final now = DateTime.now();
+      final todayString =
+          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -136,9 +198,30 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             'dietary_restrictions': dietaryRestrictionsController.text.trim(),
             'health_conditions': healthConditionsController.text.trim(),
             'status': 'verified',
+            'lastWeightUpdate': FieldValue.serverTimestamp(),
           });
-          
-      if (widget.cameFromProfile) {
+      final weightRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('weight_records');
+
+      final existingRecords =
+          await weightRef.where('date', isEqualTo: todayString).limit(1).get();
+
+      if (existingRecords.docs.isNotEmpty) {
+        await weightRef.doc(existingRecords.docs.first.id).update({
+          'weight': selectedWeight,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await weightRef.add({
+          'weight': selectedWeight,
+          'date': todayString,
+          'created_at': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (widget.sourceScreen == "Profile" || widget.sourceScreen == "Weight") {
         // If started from profile, pop back to it
         Navigator.pop(context);
       } else {
@@ -209,6 +292,48 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
     });
   }
 
+  Future<void> saveCurrentWeight() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    try {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day); // 去掉时分秒
+      final todayString =
+          "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+
+      final weightRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .collection('weight_records');
+
+      final existingRecords =
+          await weightRef.where('date', isEqualTo: todayString).limit(1).get();
+
+      if (existingRecords.docs.isNotEmpty) {
+        await weightRef.doc(existingRecords.docs.first.id).update({
+          'weight': selectedWeight,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await weightRef.add({
+          'weight': selectedWeight,
+          'date': todayString,
+          'created_at': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .update({
+            'weight': selectedWeight,
+            'lastWeightUpdate': FieldValue.serverTimestamp(),
+          });
+      initialweight = selectedWeight;
+    } catch (e) {
+      print("Error saving weight: $e");
+    }
+  }
+
   void _checkWeightGoalReached() async {
     double? targetWeight = selectedTargetWeight;
     bool isGainingWeight = false;
@@ -226,15 +351,26 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
     if (isGainingWeight || isLosingWeight) {
       _showGoalReachedDialog();
     } else {
-      _proceedToNextPage();
+      if (widget.sourceScreen == "Weight") {
+        await saveCurrentWeight(); // Save just the weight
+        if (mounted) {
+          // Check if widget is still mounted before popping
+          Navigator.pop(context);
+        }
+      } else {
+        _proceedToNextPage();
+      }
     }
   }
 
   void _showGoalReachedDialog() {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: AlertDialog(
             title: Text("🎉 Congratulations!"),
             content: Text(
               "You have reached your target weight! It's time to set a new goal.",
@@ -242,27 +378,39 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             actions: [
               TextButton(
                 onPressed: () {
+                  Navigator.of(dialogContext).pop();
                   setState(() {
                     selectedMainGoal = null;
                     selectedTargetWeight = null;
+                    selectedGoalDate = DateTime.now();
+                    selectedGoalYear = selectedGoalDate!.year;
+                    selectedGoalMonth = selectedGoalDate!.month;
+                    selectedGoalDay = selectedGoalDate!.day;
                   });
-                  Navigator.of(context).pop();
+                  _proceedToNextPage();
                 },
-                child: Text("OK"),
+                child: Text("Set New Goal"),
               ),
             ],
           ),
+        );
+      },
     );
   }
 
   void _proceedToNextPage() {
-    setState(() {
-      _currentPage++;
-      _pageController.nextPage(
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeIn,
-      );
-    });
+    if (_currentPage < 9) {
+      setState(() {
+        _currentPage++;
+        _pageController.animateToPage(
+          _currentPage,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeIn,
+        );
+      });
+    } else {
+      saveUserDetails();
+    }
   }
 
   // checking details valid or not
@@ -303,20 +451,36 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Color(0xFF3CA3DD),
+          title: Text(
+            widget.sourceScreen == "User_Home"
+                ? "Let's Get to Know You!"
+                : "Update Details",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          // Provide a basic back button during loading if appropriate
+          leading:
+              (widget.sourceScreen == "Profile" ||
+                      widget.sourceScreen == "Weight")
+                  ? IconButton(
+                    icon: Icon(Icons.arrow_back),
+                    onPressed: () => Navigator.pop(context),
+                  )
+                  : null,
+        ),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return WillPopScope(
       onWillPop: () async {
-        if (_currentPage == 0) {
-          if (widget.cameFromProfile) {
-            Navigator.pop(
-              context
-            );
-          } else {
-            // If not verified/unknown, keep original behavior
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => UserScreen()),
-            );
-          }
+        if (_currentPage == 0 ||
+            (widget.sourceScreen == "Weight" && _currentPage == 4)) {
+          Navigator.pop(
+            context,
+          ); // Always pop back if coming from Profile or Weight
           return false;
         } else {
           setState(() {
@@ -333,14 +497,18 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
         appBar: AppBar(
           backgroundColor: Color(0xFF3CA3DD),
           title: Text(
-            ("Let's Get to Know You!"),
+            widget.sourceScreen == "User_Home"
+                ? "Let's Get to Know You!"
+                : "Update Details",
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
             icon: Icon(Icons.arrow_back),
             onPressed: () {
-                if (_currentPage == 0) {
-                  if (widget.cameFromProfile) {
+              if (_currentPage == 0 ||
+                  (widget.sourceScreen == "Weight" && _currentPage == 4)) {
+                if (widget.sourceScreen == "Profile" ||
+                    widget.sourceScreen == "Weight") {
                   // If started from profile, pop back to it
                   Navigator.pop(context);
                 } else {
@@ -350,15 +518,15 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                     MaterialPageRoute(builder: (context) => UserScreen()),
                   );
                 }
-                } else {
-                  setState(() {
-                    _currentPage--;
-                    _pageController.previousPage(
-                      duration: Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                  });
-                }
+              } else {
+                setState(() {
+                  _currentPage--;
+                  _pageController.previousPage(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                  );
+                });
+              }
             },
           ),
         ),
@@ -586,7 +754,13 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                       isCurrentPageValid() ? Color(0xFF3CA3DD) : Colors.grey,
                   foregroundColor: Colors.white,
                 ),
-                child: Text(_currentPage == 9 ? "Done" : "Continue"),
+                child: Text(
+                  (_currentPage == 9 ||
+                          (widget.sourceScreen == "Weight" &&
+                              (_currentPage == 4 || _currentPage == 7)))
+                      ? "Done"
+                      : "Continue",
+                ),
               ),
             ],
           ),
@@ -881,10 +1055,10 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
     if (field != "Weight") {
       if (selectedMainGoal == "Weight Gain") {
         minWeight = selectedWeight + 0.1;
-        initial_Weight = minWeight;
+        initial_Weight = (minWeight > selectedTargetWeight!?minWeight:selectedTargetWeight)!;
       } else if (selectedMainGoal == "Weight Loss") {
         maxWeight = selectedWeight - 0.1;
-        initial_Weight = maxWeight;
+        initial_Weight = (maxWeight < selectedTargetWeight!?maxWeight:selectedTargetWeight)!;
       } else if (selectedMainGoal == "Improved Health") {
         minWeight = BMIminWeight;
         maxWeight = BMImaxWeight;

@@ -1,27 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:main/main.dart';
 import 'package:main/pages/diet_log.dart';
-import 'chat_screen.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'user_details.dart';
-import 'recipes_page.dart';
 import '../widgets/custom_dialog.dart';
 import '../widgets/home_drawer.dart';
 import '../services/gemini_service.dart';
+import '../main.dart';
 
 class UserScreen extends StatefulWidget {
   @override
   _UserScreenState createState() => _UserScreenState();
 }
 
-class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateMixin {
+class _UserScreenState extends State<UserScreen>
+    with SingleTickerProviderStateMixin, RouteAware {
   int totalCalories = 0;
   int totalProtein = 0;
   int totalCarbs = 0;
   int totalFat = 0;
+  List<FlSpot> _spots = [];
+  List<String> _dateLabels = [];
+  bool _isLoadingWeightRecords = true;
+  double _minY = 0;
+  double _maxY = 0;
 
-  int _lastCalories = -1; 
+  int _lastCalories = -1;
 
   String _progressMessage = "🎉 Keep the pace! You're doing great.";
 
@@ -47,8 +54,12 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     }
 
     final today = DateTime.now();
-    final startOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day));
-    final endOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59));
+    final startOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day),
+    );
+    final endOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day, 23, 59, 59),
+    );
 
     return FirebaseFirestore.instance
         .collection('users')
@@ -65,7 +76,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
     final data = userDoc.data() as Map<String, dynamic>?;
 
     final goal = data?['main_goals'] ?? 'Improved Health';
@@ -89,8 +104,12 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     }
 
     final yesterday = DateTime.now().subtract(Duration(days: 1));
-    final startOfDay = Timestamp.fromDate(DateTime(yesterday.year, yesterday.month, yesterday.day));
-    final endOfDay = Timestamp.fromDate(DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59));
+    final startOfDay = Timestamp.fromDate(
+      DateTime(yesterday.year, yesterday.month, yesterday.day),
+    );
+    final endOfDay = Timestamp.fromDate(
+      DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59),
+    );
 
     return await FirebaseFirestore.instance
         .collection('users')
@@ -105,7 +124,8 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _fetchTodayMealStatus();
-    _fetchTodayNutritionSummary(); 
+    _fetchTodayNutritionSummary();
+    _fetchWeightRecords();
     checkUserStatus();
 
     _breathController = AnimationController(
@@ -121,20 +141,133 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _breathController.dispose();
+    routeObserver.unsubscribe(this);
     super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+      print("UserScreen subscribed to RouteObserver"); // Debug print
+    }
     checkUserStatus();
+  }
+
+  @override
+  void didPopNext() {
+    print(
+      "UserScreen - didPopNext called (returning to screen)",
+    ); // Debug print
+    // Refresh data when returning to this screen
+    _fetchWeightRecords();
+    _fetchTodayMealStatus(); // Consider refreshing other relevant data too
+    _fetchTodayNutritionSummary();
+    checkUserStatus();
+  }
+
+  Future<void> _fetchWeightRecords() async {
+    setState(() {
+      _isLoadingWeightRecords = true;
+    });
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _spots = [];
+        _dateLabels = [];
+        _isLoadingWeightRecords = false;
+      });
+      return;
+    }
+
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('weight_records')
+              .orderBy('date', descending: true)
+              .limit(7)
+              .get();
+
+      if (snapshot.docs.isEmpty) {
+        setState(() {
+          _spots = [];
+          _dateLabels = [];
+          _isLoadingWeightRecords = false;
+        });
+        return;
+      }
+
+      final List<Map<String, dynamic>> records = [];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+          final double weight = (data['weight'] as num).toDouble();
+          final String dateString = data['date'] as String;
+          final DateTime date = DateTime.parse(dateString);
+          records.add({'date': date, 'weight': weight});
+        } catch (e) {
+          print("Error processing record: $e");
+        }
+      }
+      // Sort records by date in ascending order
+      records.sort(
+        (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
+      );
+
+      // Prepare data points and labels
+      final List<FlSpot> spots =
+          records.asMap().entries.map((entry) {
+            final index = entry.key.toDouble();
+            final weight = entry.value['weight'] as double;
+            return FlSpot(index, weight);
+          }).toList();
+
+      final List<String> dateLabels =
+          records.map((record) {
+            final date = record['date'] as DateTime;
+            return DateFormat('MM/dd').format(date);
+          }).toList();
+
+      // Calculate minY and maxY
+      final double minY =
+          spots.map((spot) => spot.y).reduce((a, b) => a < b ? a : b) - 5;
+      final double maxY =
+          spots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b) + 5;
+
+      setState(() {
+        _spots = spots;
+        _dateLabels = dateLabels;
+        _minY = minY;
+        _maxY = maxY;
+      });
+    } catch (e) {
+      print("Error fetching weight records: $e");
+      setState(() {
+        _isLoadingWeightRecords = false;
+      });
+    } finally {
+      // +++ ADDED: Ensure loading state is always turned off +++
+      if (mounted) {
+        // Check if the widget is still in the tree
+        setState(() {
+          _isLoadingWeightRecords = false;
+        });
+      }
+    }
   }
 
   void checkUserStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
 
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
@@ -180,18 +313,23 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     if (user == null) return;
 
     final today = DateTime.now();
-    final startOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day));
-    final endOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59));
+    final startOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day),
+    );
+    final endOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day, 23, 59, 59),
+    );
 
     for (var category in mealCompleted.keys) {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('meals')
-          .where('category', isEqualTo: category)
-          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-          .where('timestamp', isLessThanOrEqualTo: endOfDay)
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('meals')
+              .where('category', isEqualTo: category)
+              .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+              .where('timestamp', isLessThanOrEqualTo: endOfDay)
+              .get();
 
       setState(() {
         mealCompleted[category] = snapshot.docs.isNotEmpty;
@@ -204,16 +342,21 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     if (user == null) return;
 
     final today = DateTime.now();
-    final startOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day));
-    final endOfDay = Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59));
+    final startOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day),
+    );
+    final endOfDay = Timestamp.fromDate(
+      DateTime(today.year, today.month, today.day, 23, 59, 59),
+    );
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('meals')
-        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-        .where('timestamp', isLessThanOrEqualTo: endOfDay)
-        .get();
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('meals')
+            .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+            .where('timestamp', isLessThanOrEqualTo: endOfDay)
+            .get();
 
     int calories = 0;
     int protein = 0;
@@ -245,7 +388,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
   }
 
   void _navigateToDietLog(String category) {
-    Navigator.pushNamed(context, '/dietLog', arguments: category).then((_) => _fetchTodayMealStatus());
+    Navigator.pushNamed(
+      context,
+      '/dietLog',
+      arguments: category,
+    ).then((_) => _fetchTodayMealStatus());
   }
 
   void _navigateToSuggestions() {
@@ -314,6 +461,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
+                                        const SizedBox(height: 60),
                                         Text(
                                           "Please complete your details\n before using the app.",
                                           textAlign: TextAlign.center,
@@ -330,7 +478,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                                               MaterialPageRoute(
                                                 builder:
                                                     (context) =>
-                                                        UserDetailsScreen(cameFromProfile: false,),
+                                                        UserDetailsScreen(
+                                                          sourceScreen:
+                                                              "User_Home",
+                                                        ),
                                               ),
                                             );
                                           },
@@ -372,6 +523,8 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                                   const SizedBox(height: 20),
                                   _buildRecommendationSection(),
                                   const SizedBox(height: 20),
+                                  _buildWeightRecords(),
+                                  const SizedBox(height: 20),
                                   _buildPastRecords(),
                                 ],
                               ),
@@ -383,12 +536,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                         ? null
                         : FloatingActionButton(
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ChatScreen(),
-                              ),
-                            );
+                            Navigator.pushNamed(context, '/chatpage');
                           },
                           child: Icon(Icons.face),
                           backgroundColor: const Color.fromARGB(
@@ -408,10 +556,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
       children: [
         Image.asset('assets/icons/adaptive_icon_foreground.png', height: 40),
         Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: Colors.black),
-            onPressed: () => Scaffold.of(context).openEndDrawer(),
-          ),
+          builder:
+              (context) => IconButton(
+                icon: Icon(Icons.menu, color: Colors.black),
+                onPressed: () => Scaffold.of(context).openEndDrawer(),
+              ),
         ),
       ],
     );
@@ -436,7 +585,8 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
         for (var doc in snapshot.data!.docs) {
           final data = doc.data() as Map<String, dynamic>;
 
-          int parse(String? val) => val == null ? 0 : int.tryParse(val.split(' ').first) ?? 0;
+          int parse(String? val) =>
+              val == null ? 0 : int.tryParse(val.split(' ').first) ?? 0;
 
           calories += parse(data['calories']);
           protein += parse(data['protein']);
@@ -500,17 +650,46 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Today's Progress", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            "Today's Progress",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text("Calories", style: TextStyle(color: Colors.white70, fontSize: 14)),
-          Text("$totalCalories kcal", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(
+            "Calories",
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          Text(
+            "$totalCalories kcal",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMacroCircle("${fatPercent.toStringAsFixed(0)}%", "Fat", Color.fromRGBO(254, 198, 53, 1)),
-              _buildMacroCircle("${proteinPercent.toStringAsFixed(0)}%", "Protein", Color.fromRGBO(138, 71, 235, 1)),
-              _buildMacroCircle("${carbsPercent.toStringAsFixed(0)}%", "Carbs", Color.fromRGBO(250, 74, 12, 1)),
+              _buildMacroCircle(
+                "${fatPercent.toStringAsFixed(0)}%",
+                "Fat",
+                Color.fromRGBO(254, 198, 53, 1),
+              ),
+              _buildMacroCircle(
+                "${proteinPercent.toStringAsFixed(0)}%",
+                "Protein",
+                Color.fromRGBO(138, 71, 235, 1),
+              ),
+              _buildMacroCircle(
+                "${carbsPercent.toStringAsFixed(0)}%",
+                "Carbs",
+                Color.fromRGBO(250, 74, 12, 1),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -524,17 +703,22 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundImage: _profileImageUrl.isNotEmpty
-                      ? NetworkImage(_profileImageUrl)
-                      : AssetImage('assets/icons/default_user_icon.png') as ImageProvider,
+                  backgroundImage:
+                      _profileImageUrl.isNotEmpty
+                          ? NetworkImage(_profileImageUrl)
+                          : AssetImage('assets/icons/default_user_icon.png')
+                              as ImageProvider,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(_progressMessage, style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    _progressMessage,
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -561,7 +745,14 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                 color: color,
                 strokeWidth: 5,
               ),
-              Text(percent, style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(
+                percent,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -575,7 +766,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Diet Log", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          "Diet Log",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -593,7 +787,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
               _mealIcon("Extra Meal", 'assets/icons/extra_meal.png'),
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -621,7 +815,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                   ),
                 );
               },
-              child: Icon(Icons.add_circle_outline, size: 16, color: Colors.grey.shade700),
+              child: Icon(
+                Icons.add_circle_outline,
+                size: 16,
+                color: Colors.grey.shade700,
+              ),
             ),
           ],
         ),
@@ -644,10 +842,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
         const SizedBox(height: 12),
         GestureDetector(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => RecipesPage()),
-            );
+            Navigator.pushNamed(context, '/recipe');
           },
           child: Container(
             width: double.infinity,
@@ -656,7 +851,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
               image: DecorationImage(
                 image: AssetImage('assets/icons/healthy_illustration.jpg'),
                 fit: BoxFit.cover,
-                alignment: Alignment.center, 
+                alignment: Alignment.center,
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
@@ -664,7 +859,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                   color: Colors.grey.withOpacity(0.3),
                   blurRadius: 10,
                   offset: Offset(0, 6),
-                )
+                ),
               ],
             ),
             child: Stack(
@@ -680,7 +875,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.favorite, size: 35, color: const Color.fromARGB(255, 255, 255, 255)),
+                      Icon(
+                        Icons.favorite,
+                        size: 35,
+                        color: const Color.fromARGB(255, 255, 255, 255),
+                      ),
                       const SizedBox(height: 6),
                       ScaleTransition(
                         scale: _breathAnimation,
@@ -712,11 +911,11 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                       ],
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),
-        )
+        ),
       ],
     );
   }
@@ -781,7 +980,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Past Records", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  "Past Records",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 TextButton(
                   onPressed: () {
                     Navigator.pushNamed(context, '/pastRecords');
@@ -799,7 +1001,10 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Yesterday: $totalCalories kcal", style: TextStyle(fontSize: 16)),
+                  Text(
+                    "Yesterday: $totalCalories kcal",
+                    style: TextStyle(fontSize: 16),
+                  ),
                   const SizedBox(height: 10),
                   Stack(
                     children: [
@@ -823,9 +1028,27 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            Text("Protein", style: TextStyle(color: Colors.white, fontSize: 10)),
-                            Text("Carbs", style: TextStyle(color: Colors.white, fontSize: 10)),
-                            Text("Fat", style: TextStyle(color: Colors.black87, fontSize: 10)),
+                            Text(
+                              "Protein",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
+                            Text(
+                              "Carbs",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
+                            Text(
+                              "Fat",
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 10,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -839,7 +1062,7 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
                       _buildMacroLabel("Carbs", carbs, Colors.orange),
                       _buildMacroLabel("Fat", fat, Colors.yellow),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
@@ -855,6 +1078,318 @@ class _UserScreenState extends State<UserScreen> with SingleTickerProviderStateM
         CircleAvatar(radius: 6, backgroundColor: color),
         SizedBox(height: 4),
         Text("$label: $grams g", style: TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _buildWeightRecords() {
+    if (_isLoadingWeightRecords) {
+      return Container(
+        height: 350,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_spots.isEmpty) {
+      return Container(
+        height: 350,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            "No weight records yet.\nAdd some in your profile!",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ),
+      );
+    }
+    double calculatedMinY =
+        _spots.isEmpty
+            ? 0
+            : _spots.map((spot) => spot.y).reduce((a, b) => a < b ? a : b);
+    double calculatedMaxY =
+        _spots.isEmpty
+            ? 10 // Default if no spots
+            : _spots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
+    double paddingY = (calculatedMaxY - calculatedMinY) * 0.1;
+    if (paddingY < 2.5) paddingY = 2.5;
+
+    final double finalMinY = (calculatedMinY - paddingY).floorToDouble();
+    final double finalMaxY = (calculatedMaxY + paddingY).ceilToDouble();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Weight Trend (Last 7 Records)",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          height: 350,
+          padding: const EdgeInsets.only(
+            top: 24,
+            right: 16,
+            left: 6,
+            bottom: 12,
+          ), 
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: LineChart(
+            LineChartData(
+              lineTouchData: LineTouchData(
+                handleBuiltInTouches: true,
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                    return touchedBarSpots.map((barSpot) {
+                      final flSpot = barSpot;
+                      String dateLabel = '';
+                      if (flSpot.x.toInt() >= 0 &&
+                          flSpot.x.toInt() < _dateLabels.length) {
+                        dateLabel = _dateLabels[flSpot.x.toInt()];
+                      }
+                      return LineTooltipItem(
+                        '${flSpot.y.toStringAsFixed(1)} kg\n',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: dateLabel,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontWeight: FontWeight.normal,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                        textAlign: TextAlign.center,
+                      );
+                    }).toList();
+                  },
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: true,
+                drawHorizontalLine: true,
+                horizontalInterval:
+                    ((finalMaxY - finalMinY) / 5)
+                        .ceilToDouble(),
+                verticalInterval:
+                    1,
+                getDrawingHorizontalLine: (value) {
+                  return FlLine(
+                    color: Colors.grey.shade200,
+                    strokeWidth: 1,
+                    dashArray: [3, 3],
+                  );
+                },
+                getDrawingVerticalLine: (value) {
+                  if (_spots.any((spot) => spot.x == value)) {
+                    return FlLine(
+                      color: Colors.grey.shade200,
+                      strokeWidth: 1,
+                      dashArray: [3, 3],
+                    );
+                  }
+                  return FlLine(
+                    color:
+                        Colors
+                            .transparent,
+                    strokeWidth: 0,
+                  );
+                },
+              ),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 45,
+                    interval:
+                        ((finalMaxY - finalMinY) / 5)
+                            .ceilToDouble(),
+                    getTitlesWidget: (value, meta) {
+                      if (value == meta.min || value == meta.max)
+                        return const SizedBox.shrink();
+                      return Text(
+                        value.toStringAsFixed(0), 
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 10,
+                        ),
+                        textAlign: TextAlign.left,
+                      );
+                    },
+                  ),
+                  axisNameWidget: Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Text(
+                      "Weight (kg)",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+                  axisNameSize: 25, // Space for the axis name
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 30, // Adjust space for labels + axis name
+                    interval: 1, // Check every potential spot index
+                    getTitlesWidget: (value, meta) {
+                      final index = value.toInt();
+                      if (value == index.toDouble() &&
+                          index >= 0 &&
+                          index < _dateLabels.length) {
+                        if (_spots.any((spot) => spot.x == value)) {
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              top: 8.0,
+                            ),
+                            child: Text(
+                              _dateLabels[index],
+                              style: TextStyle(
+                                color:
+                                    Colors
+                                        .grey
+                                        .shade700,
+                                fontSize: 10,
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                      return const SizedBox.shrink(); 
+                    },
+                  ),
+                  axisNameWidget: Padding(
+                    padding: const EdgeInsets.only(top: 10.0),
+                    child: Text(
+                      "Date",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+                  axisNameSize: 25,
+                ),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                  width: 1,
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: _spots,
+                  isCurved: true,
+                  gradient: LinearGradient(
+                    colors: [Colors.blueAccent, Colors.lightBlue.shade300],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  barWidth: 3,
+                  isStrokeCapRound: true,
+                  dotData: FlDotData(
+                    show: true,
+                    getDotPainter:
+                        (spot, percent, barData, index) => FlDotCirclePainter(
+                          radius: 4,
+                          color: Colors.blueAccent,
+                          strokeWidth: 1,
+                          strokeColor: Colors.white,
+                        ),
+                  ),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blueAccent.withOpacity(0.3),
+                        Colors.lightBlue.shade300.withOpacity(
+                          0.0,
+                        ),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ],
+              minY: finalMinY,
+              maxY: finalMaxY,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => UserDetailsScreen(sourceScreen: "Weight"),
+                ),
+              );
+            },
+            child: Text("Update Weight"),
+          ),
+        ),
       ],
     );
   }

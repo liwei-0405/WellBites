@@ -8,8 +8,11 @@ import 'pages/register.dart';
 import 'pages/user_home.dart';
 import 'pages/diet_log.dart';
 import 'pages/past_records.dart';
+import 'pages/recipes_page.dart';
+import 'pages/chat_screen.dart';
 import 'widgets/custom_dialog.dart';
 
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -23,14 +26,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver],
       home: AuthCheck(), // Check Authentication
       routes: {
         '/login': (context) => LoginScreen(),
         '/register': (context) => RegisterScreen(),
         '/user': (context) => UserScreen(),
         '/main': (context) => MainPage(),
-        '/dietLog': (context) => DietLogScreen(), 
+        '/dietLog': (context) => DietLogScreen(),
         '/pastRecords': (context) => PastRecordsPage(),
+        '/recipe': (context) => RecipesPage(),
+        '/chatpage': (context) => ChatScreen(),
       },
     );
   }

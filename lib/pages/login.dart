@@ -105,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    SizedBox(height: screenHeight * 0.05),
+                    SizedBox(height: screenHeight * 0.03),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
