@@ -356,7 +356,7 @@ class ProfileInfoTile extends StatelessWidget {
         ],
       ),
       child: Row(
-<<<<<<< Updated upstream
+
         crossAxisAlignment:
             CrossAxisAlignment.start, // Align tops when text wraps
         children: [
@@ -416,30 +416,6 @@ class ProfileInfoTile extends StatelessWidget {
                 // No overflow property
               ),
             ),
-=======
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (icon != null) Icon(icon, size: 24, color: Colors.blue[300]),
-          if (icon != null) SizedBox(width: 12),
-          
-          Expanded(
-            child: Column(
-             crossAxisAlignment: CrossAxisAlignment.start,
-            children:[ 
-              Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            
-          
-    
-          Text(
-            value.isNotEmpty ? value : "Not set",
-            style: const TextStyle(fontSize: 16, color: Colors.black87),
->>>>>>> Stashed changes
-          ),
-            ],
-          ),
           ),
         ],
         
