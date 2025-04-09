@@ -113,7 +113,10 @@ class _PersonalPageState extends State<PersonalPage> {
       children: [
         Container(
           width: double.infinity,
-          height: screenHeight * 0.4, // Covers top 40%
+          height: double.infinity,
+          color: scaffoldBackgroundColor,),Container(
+          width: double.infinity,
+          height: screenHeight*0.4,
           decoration: BoxDecoration(
             image: DecorationImage(
               image: AssetImage('assets/icons/profile_icon_background.png'),
@@ -301,11 +304,23 @@ class ProfileInfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color tileColor = Theme.of(context).brightness == Brightness.dark
+        ? const Color.fromARGB(255, 29, 29, 29)!
+        : Colors.white;
+    final Color labelColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey[400]!
+        : Colors.grey.shade600;
+    final Color valueColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black87;
+    final Color iconColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.tealAccent[100]!
+        : Colors.blue.shade400;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tileColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -316,18 +331,65 @@ class ProfileInfoTile extends StatelessWidget {
         ],
       ),
       child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment.start, // Align tops when text wraps
         children: [
-          if (icon != null) Icon(icon, size: 24, color: Colors.blue[300]),
-          if (icon != null) SizedBox(width: 12),
+          // --- Icon ---
+          if (icon != null)
+            Padding(
+              // Add padding to align icon better with first line of text
+              padding: const EdgeInsets.only(top: 3.0),
+              child: Icon(
+                icon,
+                size: 22,
+                color: iconColor,
+              ), // Slightly smaller icon
+            ),
+          if (icon != null)
+            const SizedBox(width: 14), // Increased spacing after icon
+          // --- Label ---
+          // Expanded allows label to take available space and wrap if needed
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 3.0), // Match icon padding
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15, // Slightly adjusted size
+                  fontWeight: FontWeight.w500, // Medium weight for label
+                  color: labelColor,
+                ),
+                softWrap: true, // Allow label to wrap
+                // No overflow property - will wrap by default
+              ),
             ),
           ),
-          Text(
-            value.isNotEmpty ? value : "Not set",
-            style: const TextStyle(fontSize: 16, color: Colors.black87),
+
+          // Add a flexible gap before the value
+          const SizedBox(width: 10),
+
+          // --- Value ---
+          // Flexible allows value to wrap without causing overflow
+          Flexible(
+            // flex: 2, // Uncomment if you want value to tend towards taking more space
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: 3.0,
+              ), // Match icon/label padding
+              child: Text(
+                value.isNotEmpty ? value : "Not set",
+                style: TextStyle(
+                  fontSize: 15, // Match label size
+                  fontWeight:
+                      FontWeight
+                          .w500, // Medium weight for value too, or bold if preferred
+                  color: valueColor,
+                ),
+                textAlign: TextAlign.right, // Keep value right-aligned
+                softWrap: true, // Ensure value wraps
+                // No overflow property
+              ),
+            ),
           ),
         ],
       ),
