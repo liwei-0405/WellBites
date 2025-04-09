@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:main/pages/user_details.dart';
 import 'image.dart';
 import 'privacy.dart';
-import 'user_details.dart';
 
 class PersonalPage extends StatefulWidget {
   const PersonalPage({super.key});
@@ -19,7 +18,14 @@ class _PersonalPageState extends State<PersonalPage> {
   String _imageUrl = "";
   String _userName = "";
   String _userEmail = "";
-  
+  double? weight;
+  String mainGoal = "";
+  double? targetWeight;
+  double? height;
+  String gender = "";
+  String restrictions = "";
+  String healthCondition = "";
+
   void selectImage() async {
     Uint8List? img = await pickImage(ImageSource.gallery);
 
@@ -36,8 +42,6 @@ class _PersonalPageState extends State<PersonalPage> {
         setState(() {
           _imageUrl = imageUrl;
         });
-
-        print('Image uploaded successfully: $imageUrl');
       }
     }
   }
@@ -56,7 +60,6 @@ class _PersonalPageState extends State<PersonalPage> {
       });
     }
   }
-
 
   @override
   void initState() {
@@ -81,7 +84,13 @@ class _PersonalPageState extends State<PersonalPage> {
         setState(() {
           _userName = snapshot.get('username') ?? "No Name"; // Default if null
           _userEmail = snapshot.get('email') ?? "No Email"; // Default if null
-          _imageUrl = snapshot.get('profileImage') ?? "";
+          weight = snapshot.get('weight');
+          mainGoal = snapshot.get('main_goals') ?? "";
+          targetWeight = snapshot.get('target_weight');
+          height = snapshot.get('height');
+          gender = snapshot.get('gender') ?? "";
+          restrictions = snapshot.get('dietary_restrictions') ?? "";
+          healthCondition = snapshot.get('health_conditions') ?? "";
         });
 
         print("User Name: $_userName");
@@ -98,21 +107,15 @@ class _PersonalPageState extends State<PersonalPage> {
     double screenHeight = MediaQuery.of(context).size.height;
 
     var isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
-    final Color scaffoldBackgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final Color scaffoldBackgroundColor =
+        Theme.of(context).scaffoldBackgroundColor;
     return Stack(
       children: [
-        Container(
-          width: double.infinity,
-          height: double.infinity,
-          color: scaffoldBackgroundColor, // Use the theme's background color
-        ),
-
         Container(
           width: double.infinity,
           height: screenHeight * 0.4, // Covers top 40%
           decoration: BoxDecoration(
             image: DecorationImage(
-              // Ensure this asset exists in your pubspec.yaml and project
               image: AssetImage('assets/icons/profile_icon_background.png'),
               fit: BoxFit.cover,
             ),
@@ -125,18 +128,19 @@ class _PersonalPageState extends State<PersonalPage> {
             elevation: 0,
             actions: [
               IconButton(
-                onPressed: () { /* Theme toggle logic */ },
-                icon: Icon(isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined),
+                onPressed: () {
+                  /* Theme toggle logic */
+                },
+                icon: Icon(
+                  isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                ),
               ),
             ],
           ),
           body: SingleChildScrollView(
             child: Column(
               children: [
-                // Adjust this spacing to position content correctly below AppBar/Status bar
-                // Needs to account for the AppBar height + desired space from image top
-                SizedBox(height: screenHeight * 0.15), // Tune this value
-
+                SizedBox(height: screenHeight * 0.15),
                 // --- Profile Header Section ---
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
@@ -150,24 +154,31 @@ class _PersonalPageState extends State<PersonalPage> {
                           CircleAvatar(
                             radius: screenWidth * 0.12,
                             backgroundColor: Colors.grey.shade300,
-                            backgroundImage: _imageUrl.isNotEmpty
-                                ? NetworkImage(_imageUrl)
-                                : const NetworkImage(
-                                    'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
-                                  ) as ImageProvider,
+                            backgroundImage:
+                                _imageUrl.isNotEmpty
+                                    ? NetworkImage(_imageUrl)
+                                    : const NetworkImage(
+                                          'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+                                        )
+                                        as ImageProvider,
                           ),
                           Positioned(
-                            bottom: -5, right: -15,
+                            bottom: -5,
+                            right: -15,
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor, // Or scaffoldBackgroundColor
+                                color: Colors.transparent,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: scaffoldBackgroundColor, width: 2)
                               ),
+
                               child: IconButton(
                                 onPressed: selectImage,
-                                icon: Icon(Icons.add_a_photo_outlined, size: screenWidth * 0.05),
-                                padding: EdgeInsets.zero, constraints: BoxConstraints(),
+                                icon: Icon(
+                                  Icons.add_a_photo_outlined,
+                                  size: screenWidth * 0.05,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(),
                               ),
                             ),
                           ),
@@ -181,13 +192,19 @@ class _PersonalPageState extends State<PersonalPage> {
                           children: [
                             Text(
                               _userName.isNotEmpty ? _userName : "Loading...",
-                              style: TextStyle(fontSize: screenWidth * 0.05, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.05,
+                                fontWeight: FontWeight.bold,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            SizedBox(height: 4),
+
                             Text(
                               _userEmail.isNotEmpty ? _userEmail : "Loading...",
-                              style: TextStyle(fontSize: screenWidth * 0.04, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.04,
+                                color: Colors.grey,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
@@ -197,13 +214,95 @@ class _PersonalPageState extends State<PersonalPage> {
                   ),
                 ),
 
-                SizedBox(height: screenHeight * 0.03),
+                SizedBox(height: screenHeight * 0.02),
 
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      ProfileInfoTile(
+                        label: 'Weight',
+                        value: weight != null ? '$weight Kg' : 'Not set',
+                        icon: Icons.monitor_weight,
+                      ),
+                      ProfileInfoTile(
+                        label: 'Main Goal',
+                        value: mainGoal,
+                        icon: Icons.flag_outlined,
+                      ),
+                      ProfileInfoTile(
+                        label: 'Target Weight',
+                        value:
+                            targetWeight != null
+                                ? '$targetWeight Kg'
+                                : 'Not set',
+                        icon: Icons.task_alt_rounded,
+                      ),
+                      ProfileInfoTile(
+                        label: 'Height',
+                        value: height != null ? '$height cm' : 'Not set',
+                        icon: Icons.height,
+                      ),
+                      ProfileInfoTile(
+                        label: 'Gender',
+                        value: gender,
+                        icon: Icons.person_outline,
+                      ),
+                      ProfileInfoTile(
+                        label: 'Restrictions',
+                        value: restrictions,
+                        icon: Icons.no_food,
+                      ),
+                      ProfileInfoTile(
+                        label: 'Health Condition',
+                        value: healthCondition,
+                        icon: Icons.local_hospital_outlined,
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.03),
                 // --- Menu Items ---
-                ProfileWidget(title: 'Profile', icon: Icons.account_box_outlined, onPress: () => Navigator.push(context, MaterialPageRoute(builder: (context) => UserDetailsScreen(cameFromProfile: true)))),
-                ProfileWidget(title: 'Favourite', icon: Icons.star_border, onPress: () {}),
-                ProfileWidget(title: 'Privacy Policy', icon: Icons.privacy_tip_outlined, onPress: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PrivacyPolicyPage()))),
-                ProfileWidget(title: 'Settings', icon: Icons.settings_outlined, onPress: () {}),
+                ProfileWidget(
+                  title: 'Edit Profile',
+                  icon: Icons.account_box_outlined,
+                  onPress:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) =>
+                                  UserDetailsScreen(cameFromProfile: true),
+                        ),
+                      ),
+                ),
+                ProfileWidget(
+                  title: 'Favourite',
+                  icon: Icons.star_border,
+                  onPress: () {},
+                ),
+                ProfileWidget(
+                  title: 'Privacy Policy',
+                  icon: Icons.privacy_tip_outlined,
+                  onPress:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PrivacyPolicyPage(),
+                        ),
+                      ),
+                ),
+                ProfileWidget(
+                  title: 'Settings',
+                  icon: Icons.settings_outlined,
+                  onPress: () {},
+                ),
 
                 SizedBox(height: screenHeight * 0.02),
                 // --- Rating Widget ---
@@ -214,6 +313,54 @@ class _PersonalPageState extends State<PersonalPage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class ProfileInfoTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData? icon;
+
+  const ProfileInfoTile({
+    super.key,
+    required this.label,
+    required this.value,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          if (icon != null) Icon(icon, size: 24, color: Colors.blue[300]),
+          if (icon != null) SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Text(
+            value.isNotEmpty ? value : "Not set",
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -232,7 +379,6 @@ class ProfileWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
     return ListTile(
       onTap: onPress,
       leading: Container(
@@ -265,7 +411,6 @@ class RatingWidget extends StatefulWidget {
 class _RatingWidgetState extends State<RatingWidget> {
   double _rating = 5.0;
   bool _showSlider = false;
-  
 
   void _saveRating() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -313,12 +458,11 @@ class _RatingWidgetState extends State<RatingWidget> {
       children: [
         Text(
           'Enjoy Using This App?',
-          style:
-          TextStyle(
-            fontSize: screenHeight * 0.02, 
+          style: TextStyle(
+            fontSize: screenHeight * 0.02,
             fontStyle: FontStyle.normal,
-            fontWeight: FontWeight.bold
-            ),
+            fontWeight: FontWeight.bold,
+          ),
         ),
 
         SizedBox(height: screenHeight * 0.01),
@@ -342,18 +486,16 @@ class _RatingWidgetState extends State<RatingWidget> {
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
           ),
 
-          child: 
-          Text(
+          child: Text(
             _showSlider ? 'Submit' : 'Rate Us 5 ⭐',
-              style: const TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.white, // Text color
             ),
           ),
-
         ),
-        
+
         if (_showSlider)
           Column(
             children: [
@@ -369,7 +511,6 @@ class _RatingWidgetState extends State<RatingWidget> {
                   });
                 },
               ),
-              
             ],
           ),
       ],
