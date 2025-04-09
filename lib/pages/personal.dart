@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:main/pages/user_details.dart';
 import 'image.dart';
 import 'privacy.dart';
@@ -25,6 +26,8 @@ class _PersonalPageState extends State<PersonalPage> {
   String gender = "";
   String restrictions = "";
   String healthCondition = "";
+  DateTime? birthday;
+  DateTime? goalDate;
 
   void selectImage() async {
     Uint8List? img = await pickImage(ImageSource.gallery);
@@ -91,6 +94,13 @@ class _PersonalPageState extends State<PersonalPage> {
           gender = snapshot.get('gender') ?? "";
           restrictions = snapshot.get('dietary_restrictions') ?? "";
           healthCondition = snapshot.get('health_conditions') ?? "";
+
+          String? birthdayString = snapshot.get('birthday');
+          String? goalDateString = snapshot.get('goal_date');
+           birthday =
+              birthdayString != null ? DateTime.parse(birthdayString) : null;
+          goalDate =
+              goalDateString != null ? DateTime.parse(goalDateString) : null;
         });
 
         print("User Name: $_userName");
@@ -105,7 +115,7 @@ class _PersonalPageState extends State<PersonalPage> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
-
+    final dateFormat = DateFormat('d MMM y');
     var isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
     final Color scaffoldBackgroundColor =
         Theme.of(context).scaffoldBackgroundColor;
@@ -124,7 +134,7 @@ class _PersonalPageState extends State<PersonalPage> {
             ),
           ),
         ),
-        Scaffold(
+        Scaffold( 
           backgroundColor: Colors.transparent, // Keep Scaffold transparent
           appBar: AppBar(
             backgroundColor: Colors.transparent, // Keep AppBar transparent
@@ -227,6 +237,7 @@ class _PersonalPageState extends State<PersonalPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
+                    
                     children: [
                       ProfileInfoTile(
                         label: 'Weight',
@@ -266,11 +277,25 @@ class _PersonalPageState extends State<PersonalPage> {
                         value: healthCondition,
                         icon: Icons.local_hospital_outlined,
                       ),
+                     
+                      if (birthday != null)
+                        ProfileInfoTile(
+                          label: 'Birthday',
+                          value: dateFormat.format(birthday!),
+                          icon: Icons.cake_outlined,
+                        ),
+
+                      if (goalDate != null)
+                        ProfileInfoTile(
+                          label: 'Goal Date',
+                          value: dateFormat.format(goalDate!),
+                          icon: Icons.event_available_outlined,
+                        ),
                     ],
                   ),
                 ),
 
-                SizedBox(height: screenHeight * 0.03),
+                SizedBox(height: screenHeight * 0.01),
                 // --- Menu Items ---
                                 ProfileWidget(title: 'Profile', icon: Icons.account_box_outlined, onPress: () => Navigator.push(context, MaterialPageRoute(builder: (context) => UserDetailsScreen(sourceScreen: "Profile")))),
                 ProfileWidget(title: 'Favourite', icon: Icons.star_border, onPress: () {}),
@@ -331,6 +356,7 @@ class ProfileInfoTile extends StatelessWidget {
         ],
       ),
       child: Row(
+<<<<<<< Updated upstream
         crossAxisAlignment:
             CrossAxisAlignment.start, // Align tops when text wraps
         children: [
@@ -390,10 +416,36 @@ class ProfileInfoTile extends StatelessWidget {
                 // No overflow property
               ),
             ),
+=======
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon != null) Icon(icon, size: 24, color: Colors.blue[300]),
+          if (icon != null) SizedBox(width: 12),
+          
+          Expanded(
+            child: Column(
+             crossAxisAlignment: CrossAxisAlignment.start,
+            children:[ 
+              Text(
+              label,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            
+          
+    
+          Text(
+            value.isNotEmpty ? value : "Not set",
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+>>>>>>> Stashed changes
+          ),
+            ],
+          ),
           ),
         ],
+        
       ),
     );
+    
   }
 }
 
